@@ -131,7 +131,6 @@ CheckCmdInstalled () {
 # @Params
 #  - $1 directory (optional)
 # @Return g_loaderServerProperties
-# @LastMessage: ""
 # @UseCase : 
 #  - LoadServerPropertiesFile "path/to/server.properties"
 #  - if [ "$LoadServerPropertiesFile_status" == "true" ]; then echo "Job failed" else echo "Job done" fi

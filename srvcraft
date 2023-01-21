@@ -33,7 +33,7 @@ c__functionName='\033[0;38;5;45m'
 # false always return 1
 ##################
 g_repoName="git@github.com:alexiscotel/srvcraft.git"
-g_tmpInstallDIR"./tmp"
+g_tmpInstallDIR="./tmp"
 
 g_serversDIR="./instances"
 g_loaderDIR="./loader"
@@ -65,19 +65,15 @@ declare -A ga_loaderServerProperties
 StartText () {
     printf "\n${blue}This script is made for generate a READY-TO-USE minecraft server.
 Follow the next steps to deploy your server !${nocolor}\n"
-printf "${gray}Availables versions :
-  1.19 -> 1.19.3
-  1.18 -> 1.18.2
-${nocolor}"
 }
 HowToUse () {
-    printf "\n${gray}Server Manager - create, deploy and clear your minecraft server instances
-    srvmng [ -i | --install   : download and install command ]
-           [ -l | --list   : list all instances ]
-           [ -s | --start  : start a server ]
-           [ -d | --deploy : create and deploy a server ]
-           [ --config      : config properties of based server.properties file ]
-           [ --clear       : clear all the instances ]
+    printf "${gray}
+srvmng [ -i | --install : download and install command ]
+       [ -l | --list    : list all servers ]
+       [ -s | --start   : start a server ]
+       [ --create       : create a server ]
+       [ --clear        : clear all the instances ]
+       [ -h | --help    : show this message ]
 ${graydim}See https://github.com/alexiscotel/minecraftserver/README.md for more explainations${nocolor}
 \n"
 }
@@ -85,9 +81,588 @@ ${graydim}See https://github.com/alexiscotel/minecraftserver/README.md for more 
 
 
 
-###############
-## FUNCTIONS ##
-###############
+##########################
+## FILESYSTEM FUNCTIONS ##
+##########################
+
+# @Function : List all items from a directory with regex filter (arg 2)
+# @Params
+#   $1 directory
+#   $2 filter regex
+# @LastMessage: Total of items
+# UseCase : ListDir "path/to/dir" ".*"
+ListDir () {
+    dir=$1
+
+    if [ "$dir" == "*" ]; then
+        dirbasename=$1
+        listarray=$(find $dir -maxdepth 1)
+    fi
+    if [ "$dir" != "*" ]; then 
+        dirbasename="$(basename -- $dir)"
+        listarray=$(find $dir/* -maxdepth 1)
+    fi
+
+    excludeRegex=$2
+    col=$3
+
+    if [ -z "$2" ]; then
+        if [ "$dir" == "*" ]; then
+            listarray=$(find $dir -maxdepth 1)
+        fi
+        if [ "$dir" != "*" ]; then 
+            listarray=$(find $dir/* -maxdepth 1)
+        fi
+    else
+        if [ "$dir" == "*" ]; then 
+            listarray=$(find $dir -maxdepth 1 ! -name \'$excludeRegex\')
+        fi
+        if [ "$dir" != "*" ]; then
+            listarray=$(find $dir/* -maxdepth 1 ! -name \'$excludeRegex\')
+        fi
+    fi
+    if [ -z "$3" ] ; then
+        col=false
+    else
+        col=$3
+    fi
+
+    printf "${gray}List of${whitebold} ${dirbasename} ${nocolor}\n"
+    cpt=0
+    if test $col == "false"; then
+        printf "  "
+    fi
+    printf "${gray}"
+    for line in $listarray; do
+        f="$(basename -- $line)"
+        if [[ -d $f ]]; then
+            cpt=$((cpt+1))
+            printf "${darkblue}"
+            printf "${f} ${nocolor}"
+            if test $col == "true"; then
+                printf "\n"
+            fi
+        elif [[ -f $f ]]; then
+            cpt=$((cpt+1))
+            printf "${white}"
+            printf "${f} ${nocolor}"
+            if test $col == "true"; then
+                printf "\n"
+            fi
+        fi
+    done
+    printf "\n${nocolor}"
+    printf "${graydim}TOTAL :${whitebold} $cpt ${nocolor}\n"
+}
+# @Function : Create dir passed in parameter
+# @Params
+#   $1 directory
+# @LastMessage: "exist" or "completed" or "error"
+# UseCase : CreateDir "instances"
+CreateDir () {
+    dir=$1
+    
+    if [ "$g_isVerboseActive" == "true" ]; then
+        printf "${gray}create dir${white} \"${dir}\" ${nocolor}... "
+    fi
+    
+    if [ ! -d "$dir" ]; then
+        mkdir -p "${dir}"
+        
+        if [ -d "$dir" ]; then
+            if [ "$g_isVerboseActive" == "true" ]; then
+                printf "${greendim} complete${nocolor}\n"
+            fi
+        else
+            if [ "$g_isVerboseActive" == "true" ]; then
+                printf "${red} error${nocolor}\n"
+            fi
+            exit 0
+        fi
+    else
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf " ${yellow}allready exists. ${nocolor}\n"
+        fi
+    fi
+}
+# @Function : Remove dir passed in parameter
+# @Params
+#   $1 directory
+# @LastMessage: "completed" or "error"
+# UseCase : ClearDir "path/to/dir"
+ClearDir () {
+    dir=$1
+    if [ -d "$dir" ]; then
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${gray}Removing${white} ${dir} ${gray}...${nocolor} "
+        fi
+        printf "${red}"
+        rm -rf $dir
+        printf "${nocolor}"
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            if [ ! -d "$dir" ]; then
+                printf "${green} with success${nocolor}\n"
+            else
+                printf "${red} with error. dir${white} ${dir} ${red}still exists${nocolor}\n"
+            fi
+        fi
+    fi
+}
+# @Function : Rename dir passed in parameter
+# @Params
+#   $1 directory
+# @LastMessage: "completed" or "error"
+# UseCase : RenameServer "servername"
+RenameServer () {
+    serverExists="false"
+    servername=$1
+
+    if [ -z "$servername" ]; then
+        printf "${red}param empty${nocolor}\n"
+    else
+        if [ -d "$g_serversDIR/$servername" ]; then
+            local cpt=0
+            local newName="${servername}-${cpt}"
+            while [ -d "$g_serversDIR/$newName" ]; do
+                cpt=$((cpt+1))
+                newName="${servername}-${cpt}"
+            done
+
+            mv "$g_serversDIR/$servername" "$g_serversDIR/$newName"
+        else
+            printf "${red}can't rename server \"$servername\", \"$g_serversDIR/$servername\" not found${nocolor}\n"
+        fi
+    fi
+}
+# @Function : Copy file passed from parameter
+# @Params
+#   $1 path file source
+#   $1 path file destination
+# @LastMessage: "completed" or "error"
+# @UseCase : CopyFile "path/to/source" "path/to/destination"
+CopyFile () {
+    file=$1
+    fileDir=$2
+
+    if [ "$g_isVerboseActive" == "true" ]; then
+        printf "${gray}create file${white} \"${fileDir}/${file}\" ${nocolor}... "
+    fi
+
+    if [ ! -d "${fileDir}" ]; then
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${yellow}dir not found.${nocolor}\n"
+        fi
+        exit 0
+    fi
+    
+    if [ ! -f "${fileDir}/${file}" ]; then
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${yellow}file not found. ${gray}Start copy ... ${nocolor} "
+        fi
+        printf "${red}"
+        cp -r "tmp/${fileDir}/${file}" "${fileDir}/${file}"
+        printf "${nocolor}"
+        
+        if [ ! -f "${fileDir}/${file}" ]; then
+            # error
+            if [ "$g_isVerboseActive" == "true" ]; then
+                printf "${red}with failed, \"${fileDir}/${file}\" not found.${nocolor}\n"
+            fi
+            exit 0
+        else
+            # good
+            if [ "$g_isVerboseActive" == "true" ]; then
+                printf "${greendim}with success.${nocolor}\n"
+            fi
+        fi
+    else
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf " ${yellow}allready exists. ${nocolor}\n"
+        fi
+    fi
+}
+# @Function : Check if a server folder exists
+# @Params
+#   $1 servername
+# UseCase : CheckExistingServer "my-server.1.19.3"
+# - if [ "$serverExists" == "true" ]; then echo "server dir found" else echo "server dir not found" fi
+CheckExistingServer () {
+    serverExists="false"
+    servername=$1
+
+    if [ -z "$servername" ]; then
+        printf "${red}param empty${nocolor}\n"
+    else
+        if [ -d "$g_serversDIR/$servername" ]; then
+            serverExists="true"
+        else
+            serverExists="false"
+        fi
+    fi
+}
+
+
+
+
+#################################
+## SERVER PROPERTIES FUNCTIONS ##
+#################################
+
+# @Function : Read loader server.properties file and put in an associative array
+# @Params
+#  - $1 directory (optional)
+# @Return g_loaderServerProperties
+# @UseCase : 
+#  - LoadServerPropertiesFile "path/to/server.properties"
+#  - if [ "$LoadServerPropertiesFile_status" == "true" ]; then echo "Job failed" else echo "Job done" fi
+LoadServerPropertiesFile () {
+    LoadServerPropertiesFile_failed="false"
+    sourceFile=$1
+
+    if [ "$g_isVerboseActive" == "true" ]; then
+        printf "${c__functionName} > LoadServerPropertiesFile ${nocolor}\n"
+    fi
+
+    # test if param is empty
+    if [ -z "$sourceFile" ]; then
+        sourceFile="${g_loaderDIR}/server.properties"
+    fi # endof if param is empty
+
+    # test if file exists
+    if [ ! -f "$sourceFile" ]; then
+        # file not exists - update status value
+        LoadServerPropertiesFile_failed="true"
+    else
+        IFS='='
+        while IFS= read -r line
+        do
+            if [ -n "${line}" ]; then
+                hastag=${line:0:1}
+
+                if [ "${hastag}" != "#" ]; then
+                    read -a strarr <<< "$line"
+                    key="${strarr[0]}"
+                    value="${strarr[1]}"
+
+                    ga_loaderServerProperties["${key}"]="${value}"
+
+                    if [ "$g_isDoubleVerboseActive" == "true" ] ; then
+                        printf "${graydim}  > ${key} =${gray} ${value} ${nocolor}\n"
+                    fi
+                fi
+            fi
+        done <"$sourceFile"
+    fi # endof if file exists
+}
+# @Function : list items of g_versionsList
+# @UseCase : 
+#  - ListServerProperties
+ListServerProperties () {
+    local cpt=0
+    printf "${gray}List of${whitebold} Versions ${nocolor}\n${gray}"
+    for version in ${g_versionsList[@]}; do
+        cpt=$((cpt+1))
+        printf "${version}" 
+        if ! exists $version in $g_versionsList; then printf " ${yellow}No URL"; fi
+        printf "${nocolor}\n"
+    done
+}
+
+
+
+
+#####################
+## ASKED QUESTIONS ##
+#####################
+
+AskForInstall () {
+    CheckCmdInstalled
+    if [ "$CheckIfCmdInstall" == "false" ]; then
+        while true; do
+            read -p "Do you wish to install this command (y/n) ? " yn
+            case $yn in
+                [Yy]* ) 
+                    InstallIfNot
+                    break
+                ;;
+                [Nn]* ) exit;;
+                * ) echo "Please answer yes or no.";;
+            esac
+        done
+    fi
+}
+
+# @Function : Ask for server to use
+# @Result : vars $selectedServer available
+# @UseCase : 
+# - SelectServer
+# - if [ "$SelectServer_failed" == "true" ]; then echo "instances/ dir not exists" else echo "server selected : $selectedServer" fi
+SelectServer () {
+    SelectServer_failed="false"
+    selectedServer=""
+
+    # test if servers dir exists
+    if [ ! -d "$g_serversDIR" ]; then
+        SelectServer_failed="true"
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${red}servers directory \"${g_serversDIR}\" does not exits${nocolor}\n"
+            exit 1
+        fi
+    else
+        i=0
+        while read line; do
+            serversList[ $i ]="$line"        
+            (( i++ ))
+        done < <(ls -ACDtu1 "../instances")
+
+        printf "${gray}"
+        PS3='Select value in the list : '
+        select opt in "${serversList[@]}"; do
+            case "$opt" in
+                "") continue ;;
+                *)
+                    printf "${nocolor}"
+                    selectedServer=$opt
+                    break
+                    ;;
+            esac
+        done
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${gray}Server selected :${green} ${selectedServer} ${nocolor}\n"
+        fi
+    fi
+}
+
+# @Function : Ask for version to use
+# @Result : var versionUsed available
+# @UseCase : SelectForVersion
+SelectForVersion () {
+    SelectForVersion_failed="false"
+    versionUsed=""
+
+    # printf "\n${whitebold}Select Version${nocolor}\n"
+    PS3='Select version : '
+    select v in "${g_versionsList[@]}"; do
+        case "$v" in
+            "") continue ;;
+            *)
+                versionUsed=$v
+                break
+                ;;
+        esac
+    done
+
+    if [ -z "$versionUsed" ]; then
+        SelectForVersion_failed="true"
+    else
+        if [ "$g_isVerboseActive" == "true" ] ; then
+            printf "${gray}Selected version :${green} ${versionUsed} ${nocolor}\n"
+        fi
+    fi
+}
+
+# @Function : Ask for server name
+# @Result : vars $serverFullName & $serverName availables
+# @UseCase : AskForServerName
+AskForServerName () {
+    serverFullName=""
+    serverName=""
+
+    printf "\n${whitebold}Minecraft server name${nocolor}\n"
+    
+    while true; do
+        read -p $'\033[0;32m  Choose a name for your server :\033[0m ' serverFullName
+
+        if [ -z "$serverFullName" ]; then
+            printf "${red}DB name can't be empty${nocolor}\n"
+            continue
+        fi
+        break
+    done
+
+    serverName="${serverFullName// /-}"
+    if [ ! -n "${serverName}" ]; then
+        serverName="${defaultserverfullname// /-}"
+    fi
+    
+    if [ "$g_isVerboseActive" == "true" ] ; then
+        printf "${gray}server name :${green} ${serverFullName} ${graydim}(${serverName})${nocolor}\n"
+    fi
+}
+
+# @Function : select server property (used for editing)
+# @Result : vars $selectedProperty available
+# @UseCase : 
+# - SelectProperty
+# - if [ "$SelectProperty_failed" == "true" ]; then echo "Property empty" else echo "property found $selectedProperty" fi
+SelectProperty () {
+    SelectProperty_failed="false"
+    selectedProperty=""
+
+    # printf "\n${whitebold}Select Property${nocolor}\n"
+    PS3='Select property : '
+    select p in ${!ga_loaderServerProperties[@]}; do
+        case "$p" in
+            "") continue ;;
+            *)
+                selectedProperty=$p
+                break
+                ;;
+        esac
+    done
+
+    if [ -z "$selectedProperty" ]; then
+        SelectProperty_failed="true"
+    else
+        if [ "$g_isVerboseActive" == "true" ] ; then
+            printf "${gray}Selected version :${green} ${selectedProperty} ${nocolor}\n"
+        fi
+    fi
+}
+
+# @Function : Ask for value to assign to the property passed in param
+# @Result : vars $propertyValue available
+# @UseCase : 
+# - AskForPropertyValue
+# - if [ "$AskForPropertyValue_failed" == "true" ]; then echo "Property can't be edited" else echo "value assigned (retreive with $propertyValue)" fi
+AskForPropertyValue () {
+    AskForPropertyValue_failed="false"
+    property=$1
+
+    # test if param is empty
+    if [ -z "$property" ]; then
+        AskForPropertyValue_failed="true"
+
+        if [ "$g_isVerboseActive" == "true" ] ; then
+            printf "${red}property param is empty${nocolor}"
+        fi
+    fi # endof if param is empty
+
+    propertyValueType=${ga_ServerPropertiesAllowValues[$property]}
+    case $propertyValueType in
+        boolean)
+            printf "${gray}"
+            PS3='Select: '
+            selectOpts=("true" "false")
+            select opt in "${selectOpts[@]}"
+            do
+                case $opt in
+                    "true")
+                        printf "${nocolor}"
+                        propertyValue="true"
+                        break
+                        ;;
+                    "false")
+                        printf "${nocolor}"
+                        propertyValue="false"
+                        break
+                        ;;
+                    *) 
+                        printf "${nocolor}"
+                        printf "${red}invalid option $REPLY ${nocolor}"
+                        continue
+                    ;;
+                esac
+            done
+            
+        ;;
+
+        number)
+            while true; do
+                promptTextColor=$'\033[0;32m'
+                promptNoColor=$'\033[0m'
+                valueColor=$'\033[0;38;5;45m'
+                read -e -p "$promptNoColor Choose a numeric value for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
+                printf "${nocolor}"
+
+                if [ -z "$propertyValue" ]; then
+                    printf "${red}Value can't be empty${nocolor}\n"
+                    continue
+                else
+                    re='^[0-9]+$'
+                    if ! [[ $propertyValue =~ $re ]] ; then
+                        printf "${orange}error: Not a number${nocolor}\n"
+                        continue
+                    fi
+                fi
+                break
+            done
+        ;;
+
+        text)
+            while true; do
+                promptTextColor=$'\033[0;32m'
+                promptNoColor=$'\033[0m'
+                valueColor=$'\033[0;38;5;201m'
+                read -e -p "$promptNoColor Type some text for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
+
+                if [ -z "$propertyValue" ]; then
+                    printf "${red}Value can't be empty${nocolor}\n"
+                    continue
+                fi
+                break
+            done
+        ;;
+
+        dash-text)
+            while true; do
+                promptTextColor=$'\033[0;32m'
+                promptNoColor=$'\033[0m'
+                valueColor=$'\033[0;95m'
+                read -e -p "$promptNoColor Type some text without space for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
+
+                if [ -z "$propertyValue" ]; then
+                    printf "${red}Value can't be empty${nocolor}\n"
+                    continue
+                else
+                    propertyValue="${propertyValue// /-}"
+                fi
+                break
+            done
+        ;;
+        
+        array)
+            propertyValuesAsString=${ga_propertiesValues[$property]}
+            IFS=' ' read -ra propertyValuesAsArray <<< "$propertyValuesAsString"
+
+            printf "${graybold}availables values for ${property}\n${nocolor}"
+
+            printf "${gray}"
+            PS3='Select value in the list : '
+            select opt in "${propertyValuesAsArray[@]}"; do
+                case "$opt" in
+                    "") continue ;;
+                    *)
+                        printf "${nocolor}"
+                        propertyValue=$opt
+                        break
+                        ;;
+                esac
+            done
+        ;;
+
+        none)
+            printf "${orange}property ${property} can't be edited\n${nocolor}"
+            # break
+            AskForPropertyValue_failed="true"
+        ;;
+    esac
+    
+    if [ "$AskForPropertyValue_failed" != "true" -a "$g_isVerboseActive" == "true" ] ; then
+        printf "${gray}${property}=${blue}${propertyValue}${nocolor}\n"
+    fi
+}
+
+
+
+
+#######################
+## INSTALL FUNCTIONS ##
+#######################
 
 # @Function : List all lines from a directory with regex filter (arg 2)
 # @Params
@@ -98,8 +673,11 @@ CloneRepo () {
     repo=$1
     repoDir="tmp"
 
-    printf "${gray}Start cloning repository ...${nocolor}\n"
-    ClearDir $repoDir    
+    if [ "$g_isVerboseActive" == "true" ]; then
+        printf "${gray}Start cloning repository ...${nocolor}\n"
+    fi
+
+    ClearDir $repoDir
     mkdir $repoDir
 
     printf "${graydim}"
@@ -110,75 +688,209 @@ CloneRepo () {
 # @Function : Check if srvmng needed files are presents
 # @Result : update CheckIfCmdInstall var
 # @LastMessage: "already installed" or "no install found"
-# @UseCase : CheckIfCmdInstall
-#  - if [ "$CheckIfCmdInstall" == "false" ]; then echo "cmd not installed" else echo "cmd installed" fi
+# @UseCase : CheckCmdInstalled
+#  - if [ "$CheckCmdInstalled" == "false" ]; then echo "cmd not installed" else echo "cmd installed" fi
 CheckCmdInstalled () {
     CheckIfCmdInstall="false"
     
-    if [ -d "instances" ]; then
-        printf "${yellow}Server Manager is already installed${nocolor}\n"
-
-        if [ -n "$forceInstall" ]; then
-            # printf "\n${gray}Force reinstallation${nocolor}"
-            CheckIfCmdInstall="true"
-        else
-            # printf "${gray}Skip install.${nocolor}"
-            CheckIfCmdInstall="false"
-        fi
-    else
-        printf "\n${orange}No install found. ${nocolor}"
+    if [ -d "$g_loaderDIR" ]; then
         CheckIfCmdInstall="true"
-    fi
-}
-
-InstallCmdIfNot () {
-    CheckIfCmdInstall
-    if [ "$CheckIfCmdInstall" == "false" ]; then
-        printf "${whitebold}Installation of Server Managment tool${nocolor}\n"
-
-        CloneRepo
-
-        ROOTFILES="${g_tmpInstallDIR}/*"
-        for rf in $ROOTFILES; do
-            printf "  ${gray}Processing${white} $rf${nocolor} "
-            if [[ -d $rf ]]; then
-                printf "${blue}as directory${nocolor}\n"
-
-                rootDir="$(basename -- $rf)"
-
-                CreateDir $rootDir
-
-                FILES="${rf}/*"
-                for f in $FILES; do
-                    printf "${gray}Processing${white} $f ${nocolor} "
-                    if [[ -d $f ]]; then
-                        printf "${blue}as directory${nocolor}\n"
-                        printf "${yellow}nothing to do${nocolor}\n"
-
-                    elif [[ -f $f ]]; then
-                        printf "${white}as file${nocolor}\n"
-                        basename="$(basename -- $f)"
-
-                        prefix="${repoDir}/"
-                        fileDir=${rf#"$prefix"}
-
-                        CopyFile "${basename}" "${fileDir}"
-
-                        #CopyFile "list" "bin"
-                    fi
-                done
-            elif [[ -f $rf ]]; then
-                printf "${white}as file${nocolor}\n"
-                basename="$(basename -- $rf)"
-                # printf "${red}"
-                # cp -r "${repoDir}/${basename}" "./${basename}"
-                # printf "${nocolor}"
-
-                CopyFile "${basename}" "."
-            fi
-            printf "\n"
-        done
+        # if [ "$g_isVerboseActive" == "true" ]; then
+        #     printf "${graydim}Server Manager is already installed${nocolor}\n"
+        # fi
     else
-        echo "cmd installed"
+        CheckIfCmdInstall="false"
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${yellow}No install found.${nocolor}\n"
+        fi
     fi
 }
+
+InstallCmd () {
+    CloneRepo
+    ClearDir "./docs"
+    ClearDir "./loader"
+
+    ROOTFILES="${g_tmpInstallDIR}/*"
+    for rf in $ROOTFILES; do
+        # printf "  ${gray}Processing${white} $rf${nocolor} "
+        if [[ -d $rf ]]; then
+            # printf "${blue}as directory${nocolor}\n"
+
+            rootDir="$(basename -- $rf)"
+
+            CreateDir $rootDir
+
+            FILES="${rf}/*"
+            for f in $FILES; do
+                # printf "${gray}Processing${white} $f ${nocolor} "
+                if [[ -d $f ]]; then
+
+                    if [ "$g_isVerboseActive" == "true" ]; then
+                        # printf "${blue}as directory${nocolor}\n"
+                        printf "${yellow}nothing to do${nocolor}\n"
+                    fi
+
+                elif [[ -f $f ]]; then
+                    # printf "${white}as file${nocolor}\n"
+                    basename="$(basename -- $f)"
+
+                    CopyFile "${basename}" "${rootDir}"
+                fi
+            done
+        elif [[ -f $rf ]]; then
+            # printf "${white}as file${nocolor}\n"
+            basename="$(basename -- $rf)"
+
+            CopyFile "${basename}" "."
+        fi
+        
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "\n"
+        fi
+    done
+    ClearDir "$g_tmpInstallDIR"
+}
+
+InstallIfNot () {
+    CheckCmdInstalled
+    if [ "$CheckIfCmdInstall" == "false" ]; then
+        InstallCmd 
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "\n${gray}Installation ${green}completed !${nocolor}\n"
+        fi
+    fi
+}
+
+
+
+
+##############
+## COMMANDS ##
+##############
+
+ListAllServers () {
+    if [ ! -d "$g_serversDIR" ]; then
+        printf "${orange} Directory $g_serversDIR not exists\n${nocolor}"
+        CreateDir "$g_serversDIR"
+    else
+        nb="$(ls "$g_serversDIR/" | wc -l)"
+        if [ $nb -gt 0 ]; then
+            printf "${green}  Minecraft servers :${gray} ${nb} ${nocolor}\n"
+            printf "${gray}"
+            ls -ACDtu1 instances
+            printf "${nocolor}"
+        else
+            printf "${yellow}  No minecraft servers\n${nocolor}"
+            # printf "${gray}Use ${blue}srvmng --deploy ${gray}to create one\n${nocolor}"
+        fi
+        printf "\n"
+    fi
+}
+
+ClearAllServers () {
+    if [ ! -d "$g_serversDIR" ]; then
+        printf "${orange} Directory $g_serversDIR not exists\n${nocolor}"
+        CreateDir "$g_serversDIR"
+    else
+        nb="$(ls "$g_serversDIR/" | wc -l)"
+        if [ $nb -gt 0 ]; then
+            printf "${green}Theses servers will be removed :${nocolor}\n"
+            ls -ACDtu1 instances
+            read -e -p $'\033[0;38;5;178m  Are you sure ?\033[0m O/n : ' -i "O" clearValidation
+            if [ "${clearValidation}" == "O" -o "${clearValidation}" == "o" ]; then
+                ClearDir "./instances"
+            else
+                printf "${graydim}nothing done.${nocolor}\n"
+            fi
+        else
+            printf "${yellow}  No minecraft servers\n${nocolor}"
+            # printf "${gray}Use ${blue}srvmng --deploy ${gray}to create one\n${nocolor}"
+        fi
+        printf "\n"
+    fi
+}
+
+RemoveServer () {
+    SelectServer
+    if [ "$SelectServer_failed" == "false" ]; then 
+        ClearDir "$g_serversDIR/$selectedServer"
+    fi
+}
+
+CreateServer () {
+    AskForServerName
+    local current_serverFullName=$serverFullName
+    local current_serverName=$serverName
+
+    SelectForVersion
+    local current_version=$versionUsed
+
+    local current_dirName="${current_serverName}.${current_version}"
+
+    CreateDir "instances/${current_dirName}"
+
+    CheckExistingServer "${current_dirName}"
+    if [ "$serverExists" == "true" ]; then 
+        echo "server dir found"
+    else
+        echo "server dir not found"
+    fi
+}
+
+StartServer () {
+    echo "start server"
+}
+
+
+
+#####
+## START SCRIPT
+#####
+options=$(getopt -a -n srvmng -o ilsh --long install,list,create,start,clear,help -- "$@")
+[ $? -eq 0 ] || { 
+    echo "${red}Incorrect options provided${nocolor}"
+    exit 1
+}
+eval set -- "$options"
+while true; do
+    case "$1" in
+    -i | --install)
+        InstallIfNot
+        break
+        ;;
+    -l | --list)
+        InstallIfNot        
+        ListAllServers
+        break
+        ;;
+    --create)
+        InstallIfNot        
+        CreateServer
+        break
+        ;;
+    -s | --start)
+        InstallIfNot        
+        StartServer
+        break
+        ;;
+    --clear)
+        InstallIfNot        
+        ClearAllServers
+        break
+        ;;
+    -h | --help)
+        HowToUse
+        break
+        ;;
+    --)
+        StartText
+        HowToUse
+        break
+        ;;
+    esac
+    shift
+done
+
+exit 0;
