@@ -222,13 +222,14 @@ RenameServer () {
         printf "${red}param empty${nocolor}\n"
     else
         if [ -d "$g_serversDIR/$servername" ]; then
+            printf "${yellow}a server with this name allready exists ${graydim}($g_serversDIR/$servername)${nocolor}\n"
             local cpt=0
-            local newName="${servername}-${cpt}"
+            local newName="${cpt}-${servername}"
             while [ -d "$g_serversDIR/$newName" ]; do
                 cpt=$((cpt+1))
-                newName="${servername}-${cpt}"
+                newName="${cpt}-${servername}"
             done
-
+            printf "${gray}  Rename ${white}\"$servername\" ${gray}as ${white}\"$newName\" ${nocolor}\n"
             mv "$g_serversDIR/$servername" "$g_serversDIR/$newName"
         else
             printf "${red}can't rename server \"$servername\", \"$g_serversDIR/$servername\" not found${nocolor}\n"
@@ -777,7 +778,7 @@ ListAllServers () {
     else
         nb="$(ls "$g_serversDIR/" | wc -l)"
         if [ $nb -gt 0 ]; then
-            printf "${green}  Minecraft servers :${gray} ${nb} ${nocolor}\n"
+            printf "${green}  Minecraft servers :${white} ${nb} ${nocolor}\n"
             printf "${gray}"
             ls -ACDtu1 instances
             printf "${nocolor}"
@@ -829,14 +830,12 @@ CreateServer () {
 
     local current_dirName="${current_serverName}.${current_version}"
 
-    CreateDir "instances/${current_dirName}"
-
     CheckExistingServer "${current_dirName}"
     if [ "$serverExists" == "true" ]; then 
-        echo "server dir found"
-    else
-        echo "server dir not found"
+        RenameServer "${current_dirName}"
     fi
+
+    CreateDir "${g_serversDIR}/${current_dirName}"
 }
 
 StartServer () {
@@ -850,7 +849,7 @@ StartServer () {
 #####
 options=$(getopt -a -n srvmng -o ilsh --long install,list,create,start,clear,help -- "$@")
 [ $? -eq 0 ] || { 
-    echo "${red}Incorrect options provided${nocolor}"
+    printf "${red}Incorrect options provided${nocolor}\n"
     exit 1
 }
 eval set -- "$options"
