@@ -1,0 +1,12 @@
+// EXAMPLE OF USING COMMAND : /op <targets> inside server console
+
+// add player to whitelist with (inside console server) /whitelist add <player>
+// https://mcuuid.net/?q=Weedespe
+[
+  {
+    "uuid": "",
+    "name": "",
+    "level": 4,
+    "bypassesPlayerLimit": false
+  }
+]
