@@ -1,3 +1,184 @@
 #!/bin/bash
 
-printf "This script is used to manage the Craft server."
+# work only on linux
+wget=/usr/bin/wget
+
+
+############
+## COLORS ##
+############
+nocolor='\033[0m'
+white='\e[0;97m'
+whitebold='\e[0;1;97m'
+purple='\033[0;38;5;201m'
+blue='\033[0;38;5;45m'
+darkblue='\033[0;38;5;27m'
+green='\033[0;32m'
+greendim='\033[0;3;32m'
+yellow='\033[0;38;5;178m'
+orange='\e[0;3;38;5;166m'
+gray='\033[0;38;5;249m'
+graybold='\033[0;1;38;5;249m'
+graydim='\033[0;2;38;5;250m'
+red='\033[0;91m'
+## CUSTOM
+c__functionName='\033[0;38;5;45m'
+
+
+
+
+##################
+## GLOBALS VARS ##
+# true is shell command and always return 0 
+# false always return 1
+##################
+g_repoName="git@github.com:alexiscotel/srvcraft.git"
+g_tmpInstallDIR"./tmp"
+
+g_serversDIR="./instances"
+g_loaderDIR="./loader"
+
+## PRINT
+g_isVerboseActive="true"
+g_isDoubleVerboseActive="false"
+
+# list of availables versions and its download URL, in order (check https://mcversions.net for update)
+declare -a g_versionsList=(
+    "1.19.3"
+    "1.19.2"
+    "1.19"
+)
+declare -a g_versionsURLList=(
+    "https://piston-data.mojang.com/v1/objects/c9df48efed58511cdd0213c56b9013a7b5c9ac1f/server.jar"
+    "https://piston-data.mojang.com/v1/objects/f69c284232d7c7580bd89a5a4931c3581eae1378/server.jar"
+)
+# Associative array of property name and his value
+declare -A ga_loaderServerProperties
+
+
+
+
+##########
+## HELPERS ##
+##########
+
+StartText () {
+    printf "\n${blue}This script is made for generate a READY-TO-USE minecraft server.
+Follow the next steps to deploy your server !${nocolor}\n"
+printf "${gray}Availables versions :
+  1.19 -> 1.19.3
+  1.18 -> 1.18.2
+${nocolor}"
+}
+HowToUse () {
+    printf "\n${gray}Server Manager - create, deploy and clear your minecraft server instances
+    srvmng [ -i | --install   : download and install command ]
+           [ -l | --list   : list all instances ]
+           [ -s | --start  : start a server ]
+           [ -d | --deploy : create and deploy a server ]
+           [ --config      : config properties of based server.properties file ]
+           [ --clear       : clear all the instances ]
+${graydim}See https://github.com/alexiscotel/minecraftserver/README.md for more explainations${nocolor}
+\n"
+}
+
+
+
+
+###############
+## FUNCTIONS ##
+###############
+
+# @Function : List all lines from a directory with regex filter (arg 2)
+# @Params
+#   $1 repository
+# @LastMessage: "Start clonning"
+# UseCase : CloneRepo
+CloneRepo () {
+    repo=$1
+    repoDir="tmp"
+
+    printf "${gray}Start cloning repository ...${nocolor}\n"
+    ClearDir $repoDir    
+    mkdir $repoDir
+
+    printf "${graydim}"
+    git clone $g_repoName $repoDir
+    printf "\n${nocolor}"
+}
+
+# @Function : Check if srvmng needed files are presents
+# @Result : update CheckIfCmdInstall var
+# @LastMessage: "already installed" or "no install found"
+# @UseCase : CheckIfCmdInstall
+#  - if [ "$CheckIfCmdInstall" == "false" ]; then echo "cmd not installed" else echo "cmd installed" fi
+CheckCmdInstalled () {
+    CheckIfCmdInstall="false"
+    
+    if [ -d "instances" ]; then
+        printf "${yellow}Server Manager is already installed${nocolor}\n"
+
+        if [ -n "$forceInstall" ]; then
+            # printf "\n${gray}Force reinstallation${nocolor}"
+            CheckIfCmdInstall="true"
+        else
+            # printf "${gray}Skip install.${nocolor}"
+            CheckIfCmdInstall="false"
+        fi
+    else
+        printf "\n${orange}No install found. ${nocolor}"
+        CheckIfCmdInstall="true"
+    fi
+}
+
+InstallCmdIfNot () {
+    CheckIfCmdInstall
+    if [ "$CheckIfCmdInstall" == "false" ]; then
+        printf "${whitebold}Installation of Server Managment tool${nocolor}\n"
+
+        CloneRepo
+
+        ROOTFILES="${g_tmpInstallDIR}/*"
+        for rf in $ROOTFILES; do
+            printf "  ${gray}Processing${white} $rf${nocolor} "
+            if [[ -d $rf ]]; then
+                printf "${blue}as directory${nocolor}\n"
+
+                rootDir="$(basename -- $rf)"
+
+                CreateDir $rootDir
+
+                FILES="${rf}/*"
+                for f in $FILES; do
+                    printf "${gray}Processing${white} $f ${nocolor} "
+                    if [[ -d $f ]]; then
+                        printf "${blue}as directory${nocolor}\n"
+                        printf "${yellow}nothing to do${nocolor}\n"
+
+                    elif [[ -f $f ]]; then
+                        printf "${white}as file${nocolor}\n"
+                        basename="$(basename -- $f)"
+
+                        prefix="${repoDir}/"
+                        fileDir=${rf#"$prefix"}
+
+                        CopyFile "${basename}" "${fileDir}"
+
+                        #CopyFile "list" "bin"
+                    fi
+                done
+            elif [[ -f $rf ]]; then
+                printf "${white}as file${nocolor}\n"
+                basename="$(basename -- $rf)"
+                # printf "${red}"
+                # cp -r "${repoDir}/${basename}" "./${basename}"
+                # printf "${nocolor}"
+
+                CopyFile "${basename}" "."
+            fi
+            printf "\n"
+        done
+    else
+        echo "cmd installed"
+    fi
+}
