@@ -55,6 +55,16 @@ declare -a g_versionsURLList=(
 # Associative array of property name and his value
 declare -A ga_loaderServerProperties
 
+declare -a g_javaVersionsList=(
+    "17"
+    "17"
+    "17"
+)
+
+# 1.12 -> 1.16.5 = Java 8
+# 1.17 -> 1.17.1 = Java 16
+# 1.18 = Java 17
+
 
 
 
@@ -371,6 +381,97 @@ ListServerProperties () {
     done
 }
 
+
+
+####################
+## JAVA FUNCTIONS ##
+####################
+# TODO: TEST THIS FUNCTION
+# @Function : Check if java is installed
+# @Result : var $CheckIfJavaInstall available
+# @UseCase :
+# - CheckJavaInstalled
+# - if [ "$CheckIfJavaInstall" == "false" ]; then echo "java not installed" else echo "java installed" fi
+CheckJavaInstalled () {
+    # check this link to help : https://phoenixnap.com/kb/check-java-version-linux
+
+    CheckIfJavaInstall="false"
+
+    if [ "$g_isVerboseActive" == "true" ]; then
+        printf "${c__functionName} > CheckJavaInstalled ${nocolor}\n"
+    fi
+
+    if [ -z "$JAVA_HOME" ]; then
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${red}JAVA_HOME not set${nocolor}\n"
+        fi
+    else
+        if [ -f "$JAVA_HOME/bin/java" ]; then
+            CheckIfJavaInstall="true"
+        else
+            if [ "$g_isVerboseActive" == "true" ]; then
+                printf "${red}JAVA_HOME/bin/java not found${nocolor}\n"
+            fi
+        fi
+    fi
+}
+
+# @Function : Install java version passed in param
+# @Params
+#  - $1 version (8 or 11)
+# @Result : var $InstallJavaVersion_failed available
+# @UseCase :
+# - InstallJavaVersion "8"
+# - if [ "$InstallJavaVersion_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
+InstallJavaVersion () {
+    InstallJavaVersion_failed="false"
+    version=$1
+
+    if [ "$g_isVerboseActive" == "true" ]; then
+        printf "${c__functionName} > InstallJavaVersion ${nocolor}\n"
+    fi
+
+    if [ -z "$version" ]; then
+        InstallJavaVersion_failed="true"
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${red}version param is empty${nocolor}\n"
+        fi
+    else
+        UpdateJavaRepo
+
+        case $version in
+            8)
+                if [ "$g_isVerboseActive" == "true" ]; then
+                    printf "${gray}Installing java version ${green}${version}${nocolor}\n"
+                fi
+                sudo apt-get install oracle-java8-installer
+            ;;
+            16)
+                if [ "$g_isVerboseActive" == "true" ]; then
+                    printf "${gray}Installing java version ${green}${version}${nocolor}\n"
+                fi
+                sudo apt-get install oracle-java16-installer
+            ;;
+            17)
+                if [ "$g_isVerboseActive" == "true" ]; then
+                    printf "${gray}Installing java version ${green}${version}${nocolor}\n"
+                fi
+                sudo apt-get install oracle-java17-installer
+            ;;
+            *)
+                InstallJavaVersion_failed="true"
+                if [ "$g_isVerboseActive" == "true" ]; then
+                    printf "${red}version ${version} not supported${nocolor}\n"
+                fi
+            ;;
+        esac
+    fi
+}
+# TODO: TEST THIS FUNCTION  
+UpdateJavaRepo () {
+    sudo add-apt-repository ppa:linuxuprising/java
+    sudo apt update
+}
 
 
 
@@ -836,6 +937,9 @@ CreateServer () {
     fi
 
     CreateDir "${g_serversDIR}/${current_dirName}"
+
+    # TODO: test this code
+
 }
 
 StartServer () {
