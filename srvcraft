@@ -10,8 +10,8 @@ wget=/usr/bin/wget
 ## COLORS ##
 ############
 nocolor='\033[0m'
-white='\e[0;97m'
-whitebold='\e[0;1;97m'
+whiite='\033[0;97m'
+whiitebold='\033[0;1;97m'
 purple='\033[0;38;5;201m'
 blue='\033[0;38;5;45m'
 blueblink='\033[0;5;38;5;45m'
@@ -61,6 +61,65 @@ declare -a g_versionsURLList=(
 )
 # Associative array of property name and his value
 declare -A ga_loaderServerProperties
+
+declare -A ga_ServerPropertiesAllowValues=(
+    ['view-distance']="number"
+    ['simulation-distance']="number"
+    ['entity-broadcast-range-percentage']="number"
+    ['use-native-transport']="boolean"
+    ['server-ip']="IP"
+    ['server-port']="number"
+    ['motd']="text"
+    ['enable-status']="boolean"
+    ['enforce-secure-profile']="boolean"
+    ['prevent-proxy-connections']="boolean"
+    ['white-list']="boolean"
+    ['enforce-whitelist']="boolean"
+    ['online-mode']="boolean"
+    ['hide-online-players']="boolean"
+    ['max-players']="number"
+    ['pvp']="boolean"
+    ['player-idle-timeout']="number"
+    ['rate-limit']="number"
+    ['force-gamemode']="boolean"
+    ['gamemode']="array"
+    ['difficulty']="peacefull easy normal hard"
+    ['hardcore']="boolean"
+    ['enable-command-block']="boolean"
+    ['allow-flight']="boolean"
+    ['level-name']="dash-text"
+    ['level-type']="array"
+    ['level-seed']="number"
+    ['generator-settings']="none"
+    ['max-world-size']="number"
+    ['generate-structures']="boolean"
+    ['spawn-npcs']="boolean"
+    ['spawn-animals']="boolean"
+    ['spawn-monsters']="boolean"
+    ['allow-nether']="boolean"
+    ['spawn-protection']="boolean"
+    ['initial-enabled-packs']="dash-text"
+    ['initial-disabled-packs']="dash-text"
+    ['resource-pack']="dash-text"
+    ['resource-pack-sha']="dash-text"
+    ['require-resource-pack']="boolean"
+    ['resource-pack-prompt']="text"
+    ['op-permission-level']="number"
+    ['broadcast-console-to-ops']="boolean"
+    ['function-permission-level']="number"
+    ['enable-rcon']="boolean"
+    ['broadcast-rcon-to-ops']="boolean"
+    ['rcon.password']="dash-text"
+    ['rcon.port']="number"
+    ['enable-query']="boolean"
+    ['query.port']="number"
+    ['enable-jmx-monitoring']="boolean"
+    ['max-chained-neighbor-updates']="none"
+    ['max-tick-time']="none"
+    ['network-compression-threshold']="none"
+    ['sync-chunk-writes']="none"
+    ['text-filtering-config']="none"
+)
 
 # 1.12 -> 1.16.5 = Java 8
 # 1.17 -> 1.17.1 = Java 16
@@ -223,7 +282,7 @@ ListDir () {
         col=$3
     fi
 
-    printf "${gray}List of${whitebold} ${dirbasename} ${nocolor}\n"
+    printf "${gray}List of${whiitebold} ${dirbasename} ${nocolor}\n"
     cpt=0
     if test $col == "false"; then
         printf "  "
@@ -240,7 +299,7 @@ ListDir () {
             fi
         elif [[ -f $f ]]; then
             cpt=$((cpt+1))
-            printf "${white}"
+            printf "${whiite}"
             printf "${f} ${nocolor}"
             if test $col == "true"; then
                 printf "\n"
@@ -248,7 +307,7 @@ ListDir () {
         fi
     done
     printf "\n${nocolor}"
-    printf "${graydim}TOTAL :${whitebold} $cpt ${nocolor}\n"
+    printf "${graydim}TOTAL :${whiitebold} $cpt ${nocolor}\n"
 }
 # @Function : Create dir passed in parameter
 # @Params
@@ -259,7 +318,7 @@ CreateDir () {
     dir=$1
     
     if [ "$g_isVerboseActive" == "true" ]; then
-        printf "${gray}create dir${white} \"${dir}\" ${nocolor}... "
+        printf "${gray}create dir${whiite} \"${dir}\" ${nocolor}... "
     fi
     
     if [ ! -d "$dir" ]; then
@@ -290,7 +349,7 @@ ClearDir () {
     dir=$1
     if [ -d "$dir" ]; then
         if [ "$g_isVerboseActive" == "true" ]; then
-            printf "${gray}Removing${white} ${dir} ${gray}...${nocolor} "
+            printf "${gray}Removing${whiite} ${dir} ${gray}...${nocolor} "
         fi
         printf "${red}"
         rm -rf $dir
@@ -300,7 +359,7 @@ ClearDir () {
             if [ ! -d "$dir" ]; then
                 printf "${green} with success${nocolor}\n"
             else
-                printf "${red} with error. dir${white} ${dir} ${red}still exists${nocolor}\n"
+                printf "${red} with error. dir${whiite} ${dir} ${red}still exists${nocolor}\n"
             fi
         fi
     fi
@@ -325,7 +384,7 @@ RenameServer () {
                 cpt=$((cpt+1))
                 newName="${cpt}-${servername}"
             done
-            printf "${gray}  Rename ${white}\"$servername\" ${gray}as ${white}\"$newName\" ${nocolor}\n"
+            printf "${gray}  Rename ${whiite}\"$servername\" ${gray}as ${whiite}\"$newName\" ${nocolor}\n"
             mv "$g_serversDIR/$servername" "$g_serversDIR/$newName"
         else
             printf "${red}can't rename server \"$servername\", \"$g_serversDIR/$servername\" not found${nocolor}\n"
@@ -343,7 +402,7 @@ CopyFile () {
     fileDir=$2
 
     if [ "$g_isVerboseActive" == "true" ]; then
-        printf "${gray}create file${white} \"${fileDir}/${file}\" ${nocolor}... "
+        printf "${gray}create file${whiite} \"${fileDir}/${file}\" ${nocolor}... "
     fi
 
     if [ ! -d "${fileDir}" ]; then
@@ -410,20 +469,25 @@ CheckExistingServer () {
 # @Function : Read loader server.properties file and put in an associative array
 # @Params
 #  - $1 directory (optional)
-# @Return g_loaderServerProperties
+# @Result : upadte $ga_serverPropertiesArray array
 # @UseCase : 
 #  - LoadServerPropertiesFile "path/to/server.properties"
 #  - if [ "$LoadServerPropertiesFile_status" == "true" ]; then echo "Job failed" else echo "Job done" fi
+declare -A ga_serverPropertiesArray
 LoadServerPropertiesFile () {
+
     LoadServerPropertiesFile_failed="false"
     sourceFile=$1
 
-    if [ "$g_isVerboseActive" == "true" ]; then
+    if [ "$g_isDoubleVerboseActive" == "true" ]; then
         printf "${c__functionName} > LoadServerPropertiesFile ${nocolor}\n"
     fi
 
     # test if param is empty
     if [ -z "$sourceFile" ]; then
+        if [ "$g_isDoubleVerboseActive" == "true" ]; then
+            printf "${yellow}param empty${nocolor}\n"
+        fi
         sourceFile="${g_loaderDIR}/server.properties"
     fi # endof if param is empty
 
@@ -442,11 +506,20 @@ LoadServerPropertiesFile () {
                     read -a strarr <<< "$line"
                     key="${strarr[0]}"
                     value="${strarr[1]}"
+                    
 
-                    ga_loaderServerProperties["${key}"]="${value}"
+                    ## BUG : to by-pass query.port array assignement
+                    if [[ ! $key == *.* ]] ; then
+                        
+                        ga_serverPropertiesArray["$key"]="${value}"
 
-                    if [ "$g_isDoubleVerboseActive" == "true" ] ; then
-                        printf "${graydim}  > ${key} =${gray} ${value} ${nocolor}\n"
+                        if [ "$g_isDoubleVerboseActive" == "true" ] ; then
+                            printf "${graydim}  > ${key} =${gray} ${value} ${nocolor}\n"
+                        fi
+                    else
+                        if [ "$g_isDoubleVerboseActive" == "true" ] ; then
+                            printf "${red}  > ${key} skip ${nocolor}\n"
+                        fi
                     fi
                 fi
             fi
@@ -458,7 +531,7 @@ LoadServerPropertiesFile () {
 #  - ListServerProperties
 ListServerProperties () {
     local cpt=0
-    printf "${gray}List of${whitebold} Versions ${nocolor}\n${gray}"
+    printf "${gray}List of${whiitebold} Versions ${nocolor}\n${gray}"
     for version in ${g_versionsList[@]}; do
         cpt=$((cpt+1))
         printf "${version}" 
@@ -467,6 +540,48 @@ ListServerProperties () {
     done
 }
 
+# @Function : Update server.properties file passed in param with global array $ga_serverPropertiesArray values
+# @Param : 
+# - $1 serverFile
+# @UseCase : 
+# - UpdateServerPropertiesFile
+# - if [ "$updateServerPropertiesFile_failed" == "true" ]; then echo "server.properties file not found" else echo "file updated" fi
+UpdateServerPropertiesFile () {
+    updateServerPropertiesFile_failed="false"
+    serverFile=$1
+
+    # test if param is empty
+    if [ -z "$serverFile" ]; then
+        updateServerPropertiesFile_failed="true"
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${red}server file ${gray}\"${serverFile}\" ${red}not found${nocolor}\n"
+        fi
+    else
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${gray}applying in file ...${nocolor}\n"
+        fi
+
+        local prefix="${g_serversDIR}/"
+        local suffix="/server.properties"
+        local serverFileName=${serverFile#"$prefix"}
+        serverFileName=${serverFileName%"$suffix"}
+        local date=$(date +"%Y-%m-%d %H:%M:%S")
+        echo "# [srvcraft] ${serverFileName} | last update : ${date}" > $serverFile
+
+        for key in ${!ga_serverPropertiesArray[@]}; do
+            echo "${key}=${ga_serverPropertiesArray[${key}]}" >> $serverFile
+
+            if [ "$g_isDoubleVerboseActive" == "true" ]; then
+                printf "${gray} ${key} =${blue} ${ga_serverPropertiesArray[${key}]} ${nocolor}\n"
+            fi
+        done
+
+        if [ "$g_isDoubleVerboseActive" == "true" ]; then
+            printf "${gray}file ${whiite}\"${serverFile}\" ${green}updated !${nocolor}\n"
+        fi
+    fi
+}
 
 
 
@@ -651,7 +766,7 @@ InstallCmd () {
 
     ROOTFILES="${g_tmpInstallDIR}/*"
     for rf in $ROOTFILES; do
-        # printf "  ${gray}Processing${white} $rf${nocolor} "
+        # printf "  ${gray}Processing${whiite} $rf${nocolor} "
         if [[ -d $rf ]]; then
             # printf "${blue}as directory${nocolor}\n"
 
@@ -661,7 +776,7 @@ InstallCmd () {
 
             FILES="${rf}/*"
             for f in $FILES; do
-                # printf "${gray}Processing${white} $f ${nocolor} "
+                # printf "${gray}Processing${whiite} $f ${nocolor} "
                 if [[ -d $f ]]; then
 
                     if [ "$g_isVerboseActive" == "true" ]; then
@@ -670,14 +785,14 @@ InstallCmd () {
                     fi
 
                 elif [[ -f $f ]]; then
-                    # printf "${white}as file${nocolor}\n"
+                    # printf "${whiite}as file${nocolor}\n"
                     basename="$(basename -- $f)"
 
                     CopyFile "${basename}" "${rootDir}"
                 fi
             done
         elif [[ -f $rf ]]; then
-            # printf "${white}as file${nocolor}\n"
+            # printf "${whiite}as file${nocolor}\n"
             basename="$(basename -- $rf)"
 
             CopyFile "${basename}" "."
@@ -769,7 +884,7 @@ SelectForVersion () {
     versionUsed=""
 
     if [ -z "$param" ]; then
-        # printf "\n${whitebold}Select Version${nocolor}\n"
+        # printf "\n${whiitebold}Select Version${nocolor}\n"
         PS3='Select version : '
         select v in "${g_versionsList[@]}"; do
             case "$v" in
@@ -834,7 +949,7 @@ AskForMemory () {
     AskForMemory_failed="false"
     memorySelected=""
 
-    printf "\n${whitebold}Memory${nocolor}\n"
+    printf "\n${whiitebold}Memory${nocolor}\n"
     
     while true; do
         read -p $'\033[0;32m  Choose a memory for your server (in MB) :\033[0m ' memory
@@ -858,33 +973,77 @@ AskForMemory () {
     fi
 }
 
+# @Function : Ask for config edition mode
+# @Result : vars $editWithPrompt available
+# @UseCase : 
+# - AskForConfigEdition
+# - if [ "$editWithPrompt" == "true" ]; then "use prompt to edit" echo "" else echo "use nano to edit" fi
+AskForConfigEdition () {
+    #colors
+    promptTextColor=$'\033[0;32m'
+    promptTextColor2=$'\033[0;1;97m'
+    promptNoColor=$'\033[0m'
+    valueColor=$'\033[0;38;5;45m'
+    
+    editWithPrompt="true"
+    # if [ "$editWithPrompt" == "false" ]; then
+    while true; do
+        read -e -p "$promptNoColor Use ${promptTextColor}nano${promptNoColor} edit ${promptTextColor2}server.properties$promptNoColor (y/N) ? ${promptNoColor}" -i "N" editWithPrompt
+        case $editWithPrompt in
+            [Yy]* ) 
+                editWithPrompt="false"
+                break
+                ;;
+            [Nn]* ) 
+                editWithPrompt="true"
+                break
+                ;;
+            * ) printf "${red}Please answer yes or no.${nocolor}\n";;
+        esac
+    done
+    # fi
+}
+
 # @Function : select server property (used for editing)
+# @Param :
+# - $1 : serverPropertiesArray
 # @Result : vars $selectedProperty available
 # @UseCase : 
-# - SelectProperty
+# - SelectProperty $serverPropertiesArray
 # - if [ "$SelectProperty_failed" == "true" ]; then echo "Property empty" else echo "property found $selectedProperty" fi
 SelectProperty () {
     SelectProperty_failed="false"
     selectedProperty=""
 
-    # printf "\n${whitebold}Select Property${nocolor}\n"
-    PS3='Select property : '
-    select p in ${!ga_loaderServerProperties[@]}; do
-        case "$p" in
-            "") continue ;;
-            *)
-                selectedProperty=$p
-                break
-                ;;
-        esac
-    done
+    local serverPropertiesArray=$1
 
-    if [ -z "$selectedProperty" ]; then
+    # test if param servername is empty
+    # if [ -z "$serverPropertiesArray" ]; then
+    if [ ${#ga_serverPropertiesArray[@]} -eq 0 ]; then
+        printf "${red}serverPropertiesArray param is empty${nocolor}\n"
         SelectProperty_failed="true"
     else
-        if [ "$g_isVerboseActive" == "true" ] ; then
-            printf "${gray}Selected version :${green} ${selectedProperty} ${nocolor}\n"
+
+        # printf "\n${whiitebold}Select Property${nocolor}\n"
+        PS3='Select property : '
+        select p in ${!ga_serverPropertiesArray[@]}; do
+            case "$p" in
+                "") continue ;;
+                *)
+                    selectedProperty=$p
+                    break
+                    ;;
+            esac
+        done
+
+        if [ -z "$selectedProperty" ]; then
+            SelectProperty_failed="true"
+        else
+            if [ "$g_isDoubleVerboseActive" == "true" ] ; then
+                printf "${gray}Selected property :${green} ${selectedProperty} ${nocolor}\n"
+            fi
         fi
+
     fi
 }
 
@@ -898,8 +1057,6 @@ AskForPropertyValue () {
     AskForPropertyValue_failed="false"
     property=$1
 
-    echo $property
-
     # test if param is empty
     if [ -z "$property" ]; then
         AskForPropertyValue_failed="true"
@@ -908,11 +1065,7 @@ AskForPropertyValue () {
             printf "${red}property param is empty${nocolor} "
         fi
     else
-
         propertyValueType=${ga_ServerPropertiesAllowValues[$property]}
-
-        echo $propertyValueType
-
         case $propertyValueType in
             boolean)
                 printf "${gray}"
@@ -1022,15 +1175,17 @@ AskForPropertyValue () {
             ;;
         esac
         
-        if [ "$AskForPropertyValue_failed" != "true" -a "$g_isVerboseActive" == "true" ] ; then
+        if [ "$AskForPropertyValue_failed" != "true" -a "$g_DoubleisVerboseActive" == "true" ] ; then
             printf "${gray}${property}=${blue}${propertyValue}${nocolor}\n"
         fi
 
     fi # endof if param is empty
 }
 
+
+
 # UseCase :
-# SelectProperty
+# SelectProperty 
 # - if [ "$SelectProperty_failed" == "true" ]; then echo "Property empty" else echo "property found $selectedProperty" fi
 # - AskForPropertyValue "$selectedProperty"
 # - if [ "$AskForPropertyValue_failed" == "true" ]; then echo "Property can't be edited" else echo "value assigned (retreive with $propertyValue)" fi
@@ -1049,7 +1204,7 @@ cmd_ListAllServers () {
     else
         nb="$(ls "$g_serversDIR/" | wc -l)"
         if [ $nb -gt 0 ]; then
-            printf "${green}  Minecraft servers :${white} ${nb} ${orange}(TODO: show running)${nocolor}\n"
+            printf "${green}  Minecraft servers :${whiite} ${nb} ${orange}(TODO: show running)${nocolor}\n"
             printf "${gray}"
             ls -ACDtu1 $g_serversDIR
             printf "${nocolor}"
@@ -1127,8 +1282,8 @@ cmd_CreateServer () {
             if [ "$InitialiseServer_failed" == "true" ]; then
                 printf "${red}Create server ${gray}\"${current_serverFullName}\" ${graydim}(${current_serverName})${red} with version ${gray}\"${current_version}\"${red} failed${nocolor}\n"
             else 
-                printf "${green}Server ${whitebold}\"${current_serverFullName}\" ${graydim}(${current_serverName})${gray} with version ${whitebold}\"${current_version}\"${green} create with success !${nocolor}\n"
-                printf "${gray}You can start it with : ${whitebold}${commandName} --start ${gray}or use ${white} ${commandName} --config${gray} to config properties of server${nocolor}\n"
+                printf "${green}Server ${whiitebold}\"${current_serverFullName}\" ${graydim}(${current_serverName})${gray} with version ${whiitebold}\"${current_version}\"${green} create with success !${nocolor}\n"
+                printf "${gray}You can start it with : ${whiitebold}${commandName} --start ${gray}or use ${whiite} ${commandName} --config${gray} to config properties of server${nocolor}\n"
             fi
         fi
     fi
@@ -1158,30 +1313,51 @@ cmd_ConfigServer () {
     printf "${green}Choose a server to configure :${nocolor}\n"
     SelectServer 
     if [ "$SelectServer_failed" == "true" ]; then
-        echo "server nto found"
+        printf "${red}server not found${nocolor}\n"
     else
-        echo "server selected : $selectedServer"
+        # echo "server selected : $selectedServer"
 
         if [ ! -f "${g_serversDIR}/${selectedServer}/server.properties" ]; then
             printf "${red}No server.properties file found for server ${gray}${selectedServer} ${graydim}(${g_serversDIR}/${selectedServer}/server.properties)${nocolor}\n"
         else
-            local propertyFile="${g_serversDIR}/${selectedServer}/server.properties"
-            echo -e "# [srvcraft] Server ${selectedServer}\n$(cat $propertyFile)" > $propertyFile
-            nano $propertyFile
-        fi
-        # SelectProperty
-        # if [ "$SelectProperty_failed" == "true" ]; then
-        #     echo "Property empty" 
-        # else 
-        #     echo "property found $selectedProperty"
+            # LoadServerPropertiesFile "$propertyFile"
+            # if [ "$LoadServerPropertiesFile_status" == "true" ]; then
+            #     printf "${red}LoadServerPropertiesFile failed${nocolor}\n"
+            # else
+                AskForConfigEdition
+                if [ "$editWithPrompt" == "true" ]; then 
+                    printf "${graydim}Using ${gray}prompt${graydim} to edit ...${nocolor}\n"
 
-        #     AskForPropertyValue "${selectedProperty}"
-        #     if [ "$AskForPropertyValue_failed" == "true" ]; then
-        #         echo "Property can't be edited"
-        #     else
-        #         echo "value assigned (retreive with $propertyValue)"
-        #     fi
-        # fi
+                    LoadServerPropertiesFile "$propertyFile"
+                    if [ "$LoadServerPropertiesFile_status" == "true" ]; then
+                        printf "${red}LoadServerPropertiesFile failed${nocolor}\n"
+                    else
+                        SelectProperty
+                        if [ "$SelectProperty_failed" == "true" ]; then
+                            printf "${red}Property empty${nocolor}\n"
+                        else
+                            AskForPropertyValue "${selectedProperty}"
+                            if [ "$AskForPropertyValue_failed" == "true" ]; then
+                                printf "${red}Property can't be edited${nocolor}\n"
+                            else
+                                ga_serverPropertiesArray["${selectedProperty}"]="$propertyValue"
+
+                                ## update file
+                                UpdateServerPropertiesFile "${g_serversDIR}/${selectedServer}/server.properties"
+                                if [ "$updateServerPropertiesFile_failed" == "true" ]; then
+                                    echo "server.properties file not found"
+                                else 
+                                    printf "${gray}property ${whiite}$selectedProperty ${gray}update with value ${blue}${propertyValue} ${graydim}(in ${selectedServer}/server.properties) ${nocolor}\n"
+                                    printf "${gray}Use ${whiite} ${commandName} --start ${gray}to start the server ${green}with new config params${nocolor}\n"
+                                fi
+                            fi
+                        fi
+                    fi
+                else
+                    printf "${graydim}use ${gray}nano${graydim} to edit${nocolor}\n"
+                fi
+            # fi
+        fi
     fi
 }
 
