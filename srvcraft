@@ -14,6 +14,7 @@ white='\e[0;97m'
 whitebold='\e[0;1;97m'
 purple='\033[0;38;5;201m'
 blue='\033[0;38;5;45m'
+blueblink='\033[0;5;38;5;45m'
 darkblue='\033[0;38;5;27m'
 green='\033[0;32m'
 greendim='\033[0;3;32m'
@@ -253,7 +254,7 @@ ListDir () {
 # @Params
 #   $1 directory
 # @LastMessage: "exist" or "completed" or "error"
-# UseCase : CreateDir "instances"
+# UseCase : CreateDir "test/"
 CreateDir () {
     dir=$1
     
@@ -498,66 +499,62 @@ CheckForJavaInstall () {
 #  - $2 serverVersion
 #  - $3 memory
 # @UseCase : 
-#  - InitialiseServer "my-server.1.19.3" "1.19.3" "1024M"
+#  - InitialiseServer "my-server.1.19.3" "1024M"
 #  - if [ "$InitialiseServer_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
 InitialiseServer () {
     InitialiseServer_failed="false"
-    local servername=$1
-    local serverVersion=$2
-    local memory=$3
+    # local servername=$1
+    local serverNameDir=$1
+    # local serverVersion=$2
+    local memory=$2
 
     # test if param servername is empty
-    if [ -z "$servername" ]; then
-        printf "${red}servername param is empty${nocolor}\n"
+    if [ -z "$serverNameDir" ]; then
+        printf "${red}serverNameDir param is empty${nocolor}\n"
         InitialiseServer_failed="true"
     else
 
-        # test if param serverVersion is empty
-        if [ -z "$serverVersion" ]; then
-            printf "${red}serverVersion param is empty${nocolor}\n"
+        local serverDir="${g_serversDIR}/${serverNameDir}"
+        # test if dir exists
+        if [ ! -d "${serverDir}" ]; then
+            printf "${red}server \"${serverDir}\" dir not found${nocolor}\n"
             InitialiseServer_failed="true"
         else
-            local serverDir="${g_serversDIR}/${servername}.${serverVersion}"
-            # test if dir exists
-            if [ ! -d "instances/${serverDir}" ]; then
-                printf "${red}server \"${serverDir}\" dir not found${nocolor}\n"
+
+            # test if param memory is empty
+            if [ -z "$memory" ]; then
+                printf "${red}memory param is empty. adjust to ${blue}1024M${nocolor}\n"
+                memory="1024M"
+            fi # endof if memory param
+
+            if ! [[ "$memory" =~ ^([0-9]+)[MG]$ ]]; then
+                printf "${red}Memory must be a valid number and quantifier ([0-9][MG]${nocolor}\n"
                 InitialiseServer_failed="true"
             else
+                
+                printf "\n${yellow}launch server a first time to initialize ${graydim}(memory : ${blue}${memory})${nocolor}\n"
+                printf "${graydim}"
 
-                # test if param memory is empty
-                if [ -z "$memory" ]; then
-                    printf "${red}memory param is empty${nocolor}\n"
-                    InitialiseServer_failed="true"
-                else
+                local jar=$(ls -1 "${serverDir}" | grep ".*\.jar")
 
-                    if ! [[ "$memory" =~ ^([0-9]+)[MG]$ ]]; then
-                        printf "${red}Memory must be a valid number and quantifier ([0-9][MG]${nocolor}\n"
-                        InitialiseServer_failed="true"
-                    else
-                        
-                        printf "\n${yellow}launch server a first time to initialize${nocolor}\n"
-                        printf "${graydim}"
+                local actualDir=$(pwd)
+                cd ${serverDir}
+                # java -Xmx$memory -Xms$memory -jar "server.${serverVersion}.jar" nogui
+                java -Xmx$memory -Xms$memory -jar "${jar}" nogui
+                cd ${actualDir}
 
-                        local actualDir=$(pwd)
-                        cd ${serverDir}
-                        java -Xmx$memory -Xms$memory -jar "server.${serverVersion}.jar" nogui
-                        cd ${actualDir}
+                printf "${nocolor}";
+                printf "${yellow}Server stop due to incorrects eula terms${nocolor}\n"
+                
+                printf "${red}"
+                echo "eula=true" >> "${serverDir}/eula.txt"
+                printf "${nocolor}";
 
-                        printf "${nocolor}";
-                        printf "${yellow}Server stop due to incorrects eula terms${nocolor}\n"
-                        
-                        printf "${red}"
-                        echo "eula=true" >> "${serverDir}/eula.txt"
-                        printf "${nocolor}";
-                        
-                        printf "${green} EULA terms accepted${nocolor}\n"
+                printf "${blueblink} EULA terms accepted${nocolor}\n"
 
-                    fi
-                fi # endof if memory param
+            fi
 
-            fi # endof if dir exists
-
-        fi # endof if serverVersion param       
+        fi # endof if dir exists 
         
     fi # endof if serverDirName param
 }
@@ -565,68 +562,61 @@ InitialiseServer () {
 # @Function : Start the server
 # @Params
 #  - $1 servername
-#  - $2 serverVersion
 #  - $3 memory
 # @UseCase : 
-#  - StartServer "my-server.1.19.3" "1.19.3" "1024M"
+#  - StartServer "my-server.1.19.3" "1024M"
 #  - if [ "$StartServer_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
 StartServer () {
     StartServer_failed="false"
-    local servername=$1
-    local serverVersion=$2
-    local memory=$3
+    local serverNameDir=$1
+    local memory=$2
 
     # test if param servername is empty
-    if [ -z "$servername" ]; then
-        printf "${red}servername param is empty${nocolor}\n"
+    if [ -z "$serverNameDir" ]; then
+        printf "${red}serverNameDir param is empty${nocolor}\n"
         StartServer_failed="true"
     else
 
-        # test if param serverVersion is empty
-        if [ -z "$serverVersion" ]; then
-            printf "${red}serverVersion param is empty${nocolor}\n"
+        local serverDir="${g_serversDIR}/${serverNameDir}"
+        # test if dir exists
+        if [ ! -d "${serverDir}" ]; then
+            printf "${red}server \"${serverDir}\" not found${nocolor}\n"
             StartServer_failed="true"
         else
-            local serverDir="${g_serversDIR}/${servername}.${serverVersion}"
-            # test if dir exists
-            if [ ! -d "${serverDir}" ]; then
-                printf "${red}server \"${serverDir}\" not found${nocolor}\n"
+
+            ## test si fichiers présents
+            if [ ! -d "${serverDir}/libraries" ]; then
+                printf "${red}server is not initialized ${graydim}(libraries/ dir not found)${nocolor}\n"
                 StartServer_failed="true"
             else
 
-                ## test si fichiers présents
-                if [ ! -d "${serverDir}/libraries" ]; then
-                    printf "${red}server is not initialized ${graydim}(libraries/ dir not found)${nocolor}\n"
+                # test if param memory is empty
+                if [ -z "$memory" ]; then
+                    printf "${red}memory param is empty. adjust to ${blue}1024M${nocolor}\n"
+                    memory="1024M"
+                fi # endof if memory param
+
+                if ! [[ "$memory" =~ ^([0-9]+)[MG]$ ]]; then
+                    printf "${red}Memory must be a valid number and quantifier ([0-9][MG]${nocolor}\n"
                     StartServer_failed="true"
                 else
+                    
+                    printf "${green}Start \"${serverNameDir}\" server${nocolor} (${gray}Memory: ${blue}${memory}${gray})${nocolor}\n"
+                    printf "${orange}/!\ it's better to use this command in a screen session${nocolor}\n"
 
-                    # test if param memory is empty
-                    if [ -z "$memory" ]; then
-                        printf "${red}memory param is empty${nocolor}\n"
-                        StartServer_failed="true"
-                    else
+                    local jar=$(ls -1 "${serverDir}" | grep ".*\.jar")
 
-                        if ! [[ "$memory" =~ ^([0-9]+)[MG]$ ]]; then
-                            printf "${red}Memory must be a valid number and quantifier ([0-9][MG]${nocolor}\n"
-                            StartServer_failed="true"
-                        else
-                            
-                            printf "\n${yellow}Start \"${servername}\" server${nocolor}\n"
-                            printf "${graydim}"
+                    printf "${gray}"
 
-                            local actualDir=$(pwd)
-                            cd ${serverDir}
-                            java -Xmx$memory -Xms$memory -jar "server.${serverVersion}.jar" nogui
-
-                        fi
-                    fi # endof if memory param
-
-                fi # endof if dir exists
+                    local actualDir=$(pwd)
+                    cd ${serverDir}
+                    java -Xmx$memory -Xms$memory -jar "${jar}" nogui
+                fi
 
             fi # endof if dir exists
 
-        fi # endof if serverVersion param       
-        
+        fi # endof if dir exists
+
     fi # endof if serverDirName param
 }
 
@@ -731,7 +721,7 @@ AskForInstall () {
 # @Result : vars $selectedServer available
 # @UseCase : 
 # - SelectServer
-# - if [ "$SelectServer_failed" == "true" ]; then echo "instances/ dir not exists" else echo "server selected : $selectedServer" fi
+# - if [ "$SelectServer_failed" == "true" ]; then echo "$g_serversDIR/ dir not exists" else echo "server selected : $selectedServer" fi
 SelectServer () {
     SelectServer_failed="false"
     selectedServer=""
@@ -742,17 +732,16 @@ SelectServer () {
 
         if [ "$g_isVerboseActive" == "true" ]; then
             printf "${red}servers directory \"${g_serversDIR}\" does not exits${nocolor}\n"
-            exit 1
         fi
     else
         i=0
         while read line; do
             serversList[ $i ]="$line"        
             (( i++ ))
-        done < <(ls -ACDtu1 "../instances")
+        done < <(ls -ACDtu1 "${g_serversDIR}")
 
         printf "${gray}"
-        PS3='Select value in the list : '
+        PS3='Select server : '
         select opt in "${serversList[@]}"; do
             case "$opt" in
                 "") continue ;;
@@ -774,20 +763,33 @@ SelectServer () {
 # @Result : var versionUsed available
 # @UseCase : SelectForVersion
 SelectForVersion () {
+    param=$1
+    echo $param
     SelectForVersion_failed="false"
     versionUsed=""
 
-    # printf "\n${whitebold}Select Version${nocolor}\n"
-    PS3='Select version : '
-    select v in "${g_versionsList[@]}"; do
-        case "$v" in
-            "") continue ;;
-            *)
-                versionUsed=$v
-                break
-                ;;
-        esac
-    done
+    if [ -z "$param" ]; then
+        # printf "\n${whitebold}Select Version${nocolor}\n"
+        PS3='Select version : '
+        select v in "${g_versionsList[@]}"; do
+            case "$v" in
+                "") continue ;;
+                *)
+                    versionUsed=$v
+                    break
+                    ;;
+            esac
+        done
+    else
+        if [[ " ${g_versionsList[*]} " =~ " ${param} " ]]; then
+            versionUsed=$param
+        else
+            SelectForVersion_failed="true"
+            if [ "$g_isVerboseActive" == "true" ] ; then
+                printf "${red}Version ${gray}${param}${red} not available ${nocolor}\n"
+            fi
+        fi
+    fi
 
     if [ -z "$versionUsed" ]; then
         SelectForVersion_failed="true"
@@ -802,20 +804,20 @@ SelectForVersion () {
 # @Result : vars $serverFullName & $serverName availables
 # @UseCase : AskForServerName
 AskForServerName () {
-    serverFullName=""
-    serverName=""
+    param=$1
+    if [ -z "$param" ]; then
+        while true; do
+            read -p $'\033[0;32m  Choose a name for your server :\033[0m ' serverFullName
 
-    printf "\n${whitebold}Minecraft server name${nocolor}\n"
-    
-    while true; do
-        read -p $'\033[0;32m  Choose a name for your server :\033[0m ' serverFullName
-
-        if [ -z "$serverFullName" ]; then
-            printf "${red}DB name can't be empty${nocolor}\n"
-            continue
-        fi
-        break
-    done
+            if [ -z "$serverFullName" ]; then
+                printf "${red}Server name can't be empty${nocolor}\n"
+                continue
+            fi
+            break
+        done
+    else
+        serverFullName=$param
+    fi
 
     serverName="${serverFullName// /-}"
     serverName=$(echo "$serverName" | tr '[:upper:]' '[:lower:]')
@@ -842,7 +844,7 @@ AskForMemory () {
             continue
         fi
 
-        if ! [[ "$memory" =~ ^[0-9]+$ ]]; then
+        if ! [[ "$memory" =~ ^[0-9]+$ ]]; then # ^([0-9]+)[MG]$
             printf "${red}Memory must be a number${nocolor}\n"
             continue
         fi
@@ -887,6 +889,7 @@ SelectProperty () {
 }
 
 # @Function : Ask for value to assign to the property passed in param
+# @Param : property name
 # @Result : vars $propertyValue available
 # @UseCase : 
 # - AskForPropertyValue
@@ -895,6 +898,8 @@ AskForPropertyValue () {
     AskForPropertyValue_failed="false"
     property=$1
 
+    echo $property
+
     # test if param is empty
     if [ -z "$property" ]; then
         AskForPropertyValue_failed="true"
@@ -902,122 +907,133 @@ AskForPropertyValue () {
         if [ "$g_isVerboseActive" == "true" ] ; then
             printf "${red}property param is empty${nocolor} "
         fi
-    fi # endof if param is empty
+    else
 
-    propertyValueType=${ga_ServerPropertiesAllowValues[$property]}
-    case $propertyValueType in
-        boolean)
-            printf "${gray}"
-            PS3='Select: '
-            selectOpts=("true" "false")
-            select opt in "${selectOpts[@]}"
-            do
-                case $opt in
-                    "true")
-                        printf "${nocolor}"
-                        propertyValue="true"
-                        break
+        propertyValueType=${ga_ServerPropertiesAllowValues[$property]}
+
+        echo $propertyValueType
+
+        case $propertyValueType in
+            boolean)
+                printf "${gray}"
+                PS3='Select: '
+                selectOpts=("true" "false")
+                select opt in "${selectOpts[@]}"
+                do
+                    case $opt in
+                        "true")
+                            printf "${nocolor}"
+                            propertyValue="true"
+                            break
+                            ;;
+                        "false")
+                            printf "${nocolor}"
+                            propertyValue="false"
+                            break
+                            ;;
+                        *) 
+                            printf "${nocolor}"
+                            printf "${red}invalid option $REPLY ${nocolor}"
+                            continue
                         ;;
-                    "false")
-                        printf "${nocolor}"
-                        propertyValue="false"
-                        break
-                        ;;
-                    *) 
-                        printf "${nocolor}"
-                        printf "${red}invalid option $REPLY ${nocolor}"
+                    esac
+                done
+                
+            ;;
+
+            number)
+                while true; do
+                    promptTextColor=$'\033[0;32m'
+                    promptNoColor=$'\033[0m'
+                    valueColor=$'\033[0;38;5;45m'
+                    read -e -p "$promptNoColor Choose a numeric value for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
+                    printf "${nocolor}"
+
+                    if [ -z "$propertyValue" ]; then
+                        printf "${red}Value can't be empty${nocolor}\n"
                         continue
-                    ;;
-                esac
-            done
-            
-        ;;
+                    else
+                        re='^[0-9]+$'
+                        if ! [[ $propertyValue =~ $re ]] ; then
+                            printf "${orange}error: Not a number${nocolor}\n"
+                            continue
+                        fi
+                    fi
+                    break
+                done
+            ;;
 
-        number)
-            while true; do
-                promptTextColor=$'\033[0;32m'
-                promptNoColor=$'\033[0m'
-                valueColor=$'\033[0;38;5;45m'
-                read -e -p "$promptNoColor Choose a numeric value for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
-                printf "${nocolor}"
+            text)
+                while true; do
+                    promptTextColor=$'\033[0;32m'
+                    promptNoColor=$'\033[0m'
+                    valueColor=$'\033[0;38;5;201m'
+                    read -e -p "$promptNoColor Type some text for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
 
-                if [ -z "$propertyValue" ]; then
-                    printf "${red}Value can't be empty${nocolor}\n"
-                    continue
-                else
-                    re='^[0-9]+$'
-                    if ! [[ $propertyValue =~ $re ]] ; then
-                        printf "${orange}error: Not a number${nocolor}\n"
+                    if [ -z "$propertyValue" ]; then
+                        printf "${red}Value can't be empty${nocolor}\n"
                         continue
                     fi
-                fi
-                break
-            done
-        ;;
+                    break
+                done
+            ;;
 
-        text)
-            while true; do
-                promptTextColor=$'\033[0;32m'
-                promptNoColor=$'\033[0m'
-                valueColor=$'\033[0;38;5;201m'
-                read -e -p "$promptNoColor Type some text for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
+            dash-text)
+                while true; do
+                    promptTextColor=$'\033[0;32m'
+                    promptNoColor=$'\033[0m'
+                    valueColor=$'\033[0;95m'
+                    read -e -p "$promptNoColor Type some text without space for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
 
-                if [ -z "$propertyValue" ]; then
-                    printf "${red}Value can't be empty${nocolor}\n"
-                    continue
-                fi
-                break
-            done
-        ;;
+                    if [ -z "$propertyValue" ]; then
+                        printf "${red}Value can't be empty${nocolor}\n"
+                        continue
+                    else
+                        propertyValue="${propertyValue// /-}"
+                    fi
+                    break
+                done
+            ;;
+            
+            array)
+                propertyValuesAsString=${ga_loaderServerProperties[$property]}
+                IFS=' ' read -ra propertyValuesAsArray <<< "$propertyValuesAsString"
 
-        dash-text)
-            while true; do
-                promptTextColor=$'\033[0;32m'
-                promptNoColor=$'\033[0m'
-                valueColor=$'\033[0;95m'
-                read -e -p "$promptNoColor Type some text without space for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
+                printf "${graybold}availables values for ${property}\n${nocolor}"
 
-                if [ -z "$propertyValue" ]; then
-                    printf "${red}Value can't be empty${nocolor}\n"
-                    continue
-                else
-                    propertyValue="${propertyValue// /-}"
-                fi
-                break
-            done
-        ;;
+                printf "${gray}"
+                PS3='Select value in the list : '
+                select opt in "${propertyValuesAsArray[@]}"; do
+                    case "$opt" in
+                        "") continue ;;
+                        *)
+                            printf "${nocolor}"
+                            propertyValue=$opt
+                            break
+                            ;;
+                    esac
+                done
+            ;;
+
+            none)
+                printf "${orange}property ${property} can't be edited\n${nocolor}"
+                # break
+                AskForPropertyValue_failed="true"
+            ;;
+        esac
         
-        array)
-            propertyValuesAsString=${ga_loaderServerProperties[$property]}
-            IFS=' ' read -ra propertyValuesAsArray <<< "$propertyValuesAsString"
+        if [ "$AskForPropertyValue_failed" != "true" -a "$g_isVerboseActive" == "true" ] ; then
+            printf "${gray}${property}=${blue}${propertyValue}${nocolor}\n"
+        fi
 
-            printf "${graybold}availables values for ${property}\n${nocolor}"
-
-            printf "${gray}"
-            PS3='Select value in the list : '
-            select opt in "${propertyValuesAsArray[@]}"; do
-                case "$opt" in
-                    "") continue ;;
-                    *)
-                        printf "${nocolor}"
-                        propertyValue=$opt
-                        break
-                        ;;
-                esac
-            done
-        ;;
-
-        none)
-            printf "${orange}property ${property} can't be edited\n${nocolor}"
-            # break
-            AskForPropertyValue_failed="true"
-        ;;
-    esac
-    
-    if [ "$AskForPropertyValue_failed" != "true" -a "$g_isVerboseActive" == "true" ] ; then
-        printf "${gray}${property}=${blue}${propertyValue}${nocolor}\n"
-    fi
+    fi # endof if param is empty
 }
+
+# UseCase :
+# SelectProperty
+# - if [ "$SelectProperty_failed" == "true" ]; then echo "Property empty" else echo "property found $selectedProperty" fi
+# - AskForPropertyValue "$selectedProperty"
+# - if [ "$AskForPropertyValue_failed" == "true" ]; then echo "Property can't be edited" else echo "value assigned (retreive with $propertyValue)" fi
 
 
 
@@ -1026,26 +1042,25 @@ AskForPropertyValue () {
 ## COMMANDS ##
 ##############
 
-ListAllServers () {
+cmd_ListAllServers () {
     if [ ! -d "$g_serversDIR" ]; then
         printf "${orange} Directory $g_serversDIR not exists\n${nocolor}"
         CreateDir "$g_serversDIR"
     else
         nb="$(ls "$g_serversDIR/" | wc -l)"
         if [ $nb -gt 0 ]; then
-            printf "${green}  Minecraft servers :${white} ${nb} ${nocolor}\n"
+            printf "${green}  Minecraft servers :${white} ${nb} ${orange}(TODO: show running)${nocolor}\n"
             printf "${gray}"
-            ls -ACDtu1 instances
+            ls -ACDtu1 $g_serversDIR
             printf "${nocolor}"
         else
             printf "${yellow}  No minecraft servers\n${nocolor}"
             printf "${yellow}Use ${gray}${commandName} --create ${gray}to create one\n${nocolor}"
         fi
-        printf "\n"
     fi
 }
 
-ClearAllServers () {
+cmd_ClearAllServers () {
     if [ ! -d "$g_serversDIR" ]; then
         printf "${orange} Directory $g_serversDIR not exists\n${nocolor}"
         CreateDir "$g_serversDIR"
@@ -1053,10 +1068,11 @@ ClearAllServers () {
         nb="$(ls "$g_serversDIR/" | wc -l)"
         if [ $nb -gt 0 ]; then
             printf "${green}Theses servers will be removed :${nocolor}\n"
-            ls -ACDtu1 instances
-            read -e -p $'\033[0;38;5;178m  Are you sure ?\033[0m O/n : ' -i "O" clearValidation
+            ls -ACDtu1 $g_serversDIR
+            printf "\n"
+            read -e -p $'\033[0;38;5;178m  Are you sure ?\033[0m O/n : ' -i "n" clearValidation
             if [ "${clearValidation}" == "O" -o "${clearValidation}" == "o" ]; then
-                ClearDir "./instances"
+                ClearDir "${g_serversDIR}"
             else
                 printf "${graydim}nothing done.${nocolor}\n"
             fi
@@ -1068,24 +1084,21 @@ ClearAllServers () {
     fi
 }
 
-RemoveServer () {
+cmd_RemoveServer () {
     SelectServer
     if [ "$SelectServer_failed" == "false" ]; then 
         ClearDir "$g_serversDIR/$selectedServer"
     fi
 }
 
-CreateServer () {
-    AskForServerName
+cmd_CreateServer () {
+    printf "\n${blue}Create a new server${nocolor}\n"
+    AskForServerName "$1"
     local current_serverFullName=$serverFullName
     local current_serverName=$serverName
 
-    SelectForVersion
+    SelectForVersion "$2"
     local current_version=$versionUsed
-
-    # test java version
-    
-    # fin test java version
 
     local current_dirName="${current_serverName}.${current_version}"
 
@@ -1109,28 +1122,68 @@ CreateServer () {
             echo "file not copied"
         else
             echo "file copied"
-
-            InitialiseServer "${current_serverName}" "${current_version}" "1024M"
+            
+            InitialiseServer "${current_dirName}" "$3"
             if [ "$InitialiseServer_failed" == "true" ]; then
                 printf "${red}Create server ${gray}\"${current_serverFullName}\" ${graydim}(${current_serverName})${red} with version ${gray}\"${current_version}\"${red} failed${nocolor}\n"
             else 
-                printf "${gree}Server ${gray}\"${current_serverFullName}\" ${graydim}(${current_serverName})${red} with version ${gray}\"${current_version}\"${red} create with success !${nocolor}\n"
+                printf "${green}Server ${whitebold}\"${current_serverFullName}\" ${graydim}(${current_serverName})${gray} with version ${whitebold}\"${current_version}\"${green} create with success !${nocolor}\n"
+                printf "${gray}You can start it with : ${whitebold}${commandName} --start ${gray}or use ${white} ${commandName} --config${gray} to config properties of server${nocolor}\n"
             fi
         fi
     fi
 }
 
-# StartServer () {
-#     echo "start server"
+cmd_StartServer () {
+    printf "${green}Choose a server to start :${nocolor}\n"
+    SelectServer 
+    if [ "$SelectServer_failed" == "true" ]; then
+        echo "server not found"
+    else
+        echo "server selected : $selectedServer"
 
-#     SelectServer
+        AskForMemory
+        local memory=$memorySelected
 
-#     AskForMemory
-#     local memory=$memorySelected
+        StartServer "${selectedServer}" "${memory}"
+        if [ "$StartServer_failed" == "true" ]; then
+            echo "Job failed"
+        else
+            echo "Job done"
+        fi
+    fi
+}
 
-#     StartServer "my-server.1.19.3" "1.19.3" "1024M"
-#     if [ "$StartServer_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
-# }
+cmd_ConfigServer () {
+    printf "${green}Choose a server to configure :${nocolor}\n"
+    SelectServer 
+    if [ "$SelectServer_failed" == "true" ]; then
+        echo "server nto found"
+    else
+        echo "server selected : $selectedServer"
+
+        if [ ! -f "${g_serversDIR}/${selectedServer}/server.properties" ]; then
+            printf "${red}No server.properties file found for server ${gray}${selectedServer} ${graydim}(${g_serversDIR}/${selectedServer}/server.properties)${nocolor}\n"
+        else
+            local propertyFile="${g_serversDIR}/${selectedServer}/server.properties"
+            echo -e "# [srvcraft] Server ${selectedServer}\n$(cat $propertyFile)" > $propertyFile
+            nano $propertyFile
+        fi
+        # SelectProperty
+        # if [ "$SelectProperty_failed" == "true" ]; then
+        #     echo "Property empty" 
+        # else 
+        #     echo "property found $selectedProperty"
+
+        #     AskForPropertyValue "${selectedProperty}"
+        #     if [ "$AskForPropertyValue_failed" == "true" ]; then
+        #         echo "Property can't be edited"
+        #     else
+        #         echo "value assigned (retreive with $propertyValue)"
+        #     fi
+        # fi
+    fi
+}
 
 
 
@@ -1158,7 +1211,7 @@ ${commandName} [ -i | --install : download and install command ]
        [ --create       : create a server ]
        [ -l | --list    : list all servers ]
        [ -s | --start   : start a server ]
-       [ --clear        : clear all the instances ]
+       [ --clear        : clear all the instances (ls ${g_serversDIR}) ]
        [ -h | --help    : show this message ]
 ${graydim}See https://github.com/alexiscotel/minecraftserver_command/README.md for more explainations${nocolor}\n"
 }
@@ -1166,14 +1219,12 @@ ${graydim}See https://github.com/alexiscotel/minecraftserver_command/README.md f
 #####
 ## START SCRIPT
 #####
-clear
-
 CheckForJavaInstall
 if [ "$g_isJavaInstalled" == "false" ]; then
     exit 0;
 fi
 
-options=$(getopt -a -n ${commandName} -o ilsh --long install,checkInstall,create,list,start,clear,help -- "$@")
+options=$(getopt -a -n ${commandName} -o ilsh --long install,checkInstall,create,config,list,start,remove,clear,help -- "$@")
 [ $? -eq 0 ] || { 
     printf "${red}Incorrect options provided${nocolor}\n"
     exit 1
@@ -1196,28 +1247,42 @@ while true; do
     --create)
         CheckCmdInstalled
         if [ "$CheckIfCmdInstall" == "true" ]; then
-            CreateServer
+            cmd_CreateServer "$3" "$4" "$5"
+        else
+            printf "${red}No install found. use ${gray}${commandName} --install${nocolor} ${nocolor}\n"
+        fi
+        break
+        ;;
+    --config)
+        CheckCmdInstalled
+        if [ "$CheckIfCmdInstall" == "true" ]; then
+            cmd_ConfigServer
         else
             printf "${red}No install found. use ${gray}${commandName} --install${nocolor} ${nocolor}\n"
         fi
         break
         ;;
     -l | --list)
-        ListAllServers
+        cmd_ListAllServers
         break
         ;;
     -s | --start)
         CheckCmdInstalled
         if [ "$CheckIfCmdInstall" == "true" ]; then
             HelperScreenIssue
-            StartServer
+            printf "\n"
+            cmd_StartServer
         else
             printf "${red}No install found. use ${gray}${commandName} --install${nocolor} ${nocolor}\n"
         fi
         break
         ;;
+    --remove)
+        cmd_RemoveServer
+        break
+        ;;
     --clear)
-        ClearAllServers
+        cmd_ClearAllServers
         break
         ;;
     -h | --help)
