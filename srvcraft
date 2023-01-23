@@ -1,4 +1,6 @@
 #!/bin/bash
+commandPath=$0
+commandName=`basename "$commandPath"`
 
 # work only on linux
 wget=/usr/bin/wget
@@ -32,11 +34,14 @@ c__functionName='\033[0;38;5;45m'
 # true is shell command and always return 0 
 # false always return 1
 ##################
-g_repoName="git@github.com:alexiscotel/srvcraft.git"
+g_isJavaInstalled="false"
+
+g_repoURL="git@github.com:alexiscotel/srvcraft.git" #minecraftserver_command
 g_tmpInstallDIR="./tmp"
 
 g_serversDIR="./instances"
 g_loaderDIR="./loader"
+g_downloadDIR="${g_loaderDIR}/downloads"
 
 ## PRINT
 g_isVerboseActive="true"
@@ -51,15 +56,10 @@ declare -a g_versionsList=(
 declare -a g_versionsURLList=(
     "https://piston-data.mojang.com/v1/objects/c9df48efed58511cdd0213c56b9013a7b5c9ac1f/server.jar"
     "https://piston-data.mojang.com/v1/objects/f69c284232d7c7580bd89a5a4931c3581eae1378/server.jar"
+    "https://launcher.mojang.com/v1/objects/e00c4052dac1d59a1188b2aa9d5a87113aaf1122/server.jar"
 )
 # Associative array of property name and his value
 declare -A ga_loaderServerProperties
-
-declare -a g_javaVersionsList=(
-    "17"
-    "17"
-    "17"
-)
 
 # 1.12 -> 1.16.5 = Java 8
 # 1.17 -> 1.17.1 = Java 16
@@ -67,27 +67,112 @@ declare -a g_javaVersionsList=(
 
 
 
+####################
+## DOWNLOAD FUNCTONS
+####################
 
-##########
-## HELPERS ##
-##########
+# @Function : List all lines from a directory with regex filter (arg 2)
+# @Params
+#   $1 repository
+# @LastMessage: "Start clonning"
+# UseCase : CloneRepo
+CloneRepo () {
+    repo=$1
+    repoDir="tmp"
 
-StartText () {
-    printf "\n${blue}This script is made for generate a READY-TO-USE minecraft server.
-Follow the next steps to deploy your server !${nocolor}\n"
+    if [ "$g_isVerboseActive" == "true" ]; then
+        printf "${gray}Start cloning repository ...${nocolor}\n"
+    fi
+
+    ClearDir $repoDir
+    mkdir $repoDir
+
+    printf "${graydim}"
+    git clone $g_repoURL $repoDir
+    printf "${nocolor}"
 }
-HowToUse () {
-    printf "${gray}
-srvmng [ -i | --install : download and install command ]
-       [ -l | --list    : list all servers ]
-       [ -s | --start   : start a server ]
-       [ --create       : create a server ]
-       [ --clear        : clear all the instances ]
-       [ -h | --help    : show this message ]
-${graydim}See https://github.com/alexiscotel/minecraftserver/README.md for more explainations${nocolor}
-\n"
-}
 
+# @Function : Download minecraft server with specific version passed in param
+# @Params
+#   $1 version
+# @Result : download the file in the g_downloadDIR as "server.${version}.jar"
+# UseCase : DownloadMinecraftServerVersion "1.19.3"
+# - if [ "$DownloadMinecraftServerVersion_failed" == "true" ]; then echo "error when download" else echo "download ok | file present" fi
+DownloadMinecraftServerVersion () {
+    DownloadMinecraftServerVersion_failed="false"
+
+    if [ ! -d "$g_downloadDIR" ]; then
+        mkdir -p $g_downloadDIR
+    fi # endof if param is empty
+
+    local version=$1
+
+    # test if param is empty
+    if [ -z "$version" ]; then
+        printf "${red}version param is empty${nocolor}\n"
+        DownloadMinecraftServerVersion_failed="true"
+    else
+
+        local filename="server.${version}.jar"
+
+        printf "  ${gray}asking for${nocolor} ${filename}\n"
+
+        if test ! -f "${g_downloadDIR}/${filename}" ; then
+            local url=""
+            case $version in
+                "1.19.3")
+                    url="https://piston-data.mojang.com/v1/objects/c9df48efed58511cdd0213c56b9013a7b5c9ac1f/server.jar"
+                    ;;
+                "1.19.2")
+                    url="https://piston-data.mojang.com/v1/objects/f69c284232d7c7580bd89a5a4931c3581eae1378/server.jar"
+                    ;;
+                "1.19.1")
+                    url="https://piston-data.mojang.com/v1/objects/8399e1211e95faa421c1507b322dbeae86d604df/server.jar"
+                    ;;
+                "1.19")
+                    url="https://launcher.mojang.com/v1/objects/e00c4052dac1d59a1188b2aa9d5a87113aaf1122/server.jar"
+                    ;;
+                # "1.18.2")
+                #     url="https://launcher.mojang.com/v1/objects/c8f83c5655308435b3dcf03c06d9fe8740a77469/server.jar"
+                #     ;;
+                # "1.18.1")
+                #     url="https://launcher.mojang.com/v1/objects/125e5adf40c659fd3bce3e66e67a16bb49ecc1b9/server.jar"
+                #     ;;
+                # "1.18")
+                #     url="https://launcher.mojang.com/v1/objects/3cf24a8694aca6267883b17d934efacc5e44440d/server.jar"
+                #     ;;
+            esac
+            if [ -z "${url}" ]; then
+                printf "    ${red}version number not found in list${nocolor}\n"
+                DownloadMinecraftServerVersion_failed="true"
+            else
+
+                # start getting the jar file
+                printf "${gray}start download ... ${nocolor}\n"
+                printf "${graydim}"
+                # cd $downloadDir
+                $wget -O "${g_downloadDIR}/${filename}" "$url"
+                # cd "../../"
+                printf "${nocolor}"
+                printf "${gray}download finished${nocolor} "
+                if [ -z "${g_downloadDIR}/${filename}" ]; then
+                    # error
+                    printf "${red}with failed, server.jar not found.${nocolor}\n"
+                    exit 0
+                else
+                    # good
+                    printf "${greendim}with success.${nocolor}\n"
+                fi
+
+            fi
+
+            
+        else
+            printf "${yellow}.jar file already present on server${nocolor}\n"
+        fi
+
+    fi # endof if param is empty
+}
 
 
 
@@ -383,95 +468,241 @@ ListServerProperties () {
 
 
 
+
 ####################
 ## JAVA FUNCTIONS ##
 ####################
-# TODO: TEST THIS FUNCTION
-# @Function : Check if java is installed
-# @Result : var $CheckIfJavaInstall available
-# @UseCase :
-# - CheckJavaInstalled
-# - if [ "$CheckIfJavaInstall" == "false" ]; then echo "java not installed" else echo "java installed" fi
-CheckJavaInstalled () {
-    # check this link to help : https://phoenixnap.com/kb/check-java-version-linux
+# /!\ Useless for minecraft server version later than 1.18
+# Server/Requirements 1.19.3 :
+# As of version 1.17, JRE version 16 is required. For version 1.18, JRE version 17 is required
 
-    CheckIfJavaInstall="false"
-
-    if [ "$g_isVerboseActive" == "true" ]; then
-        printf "${c__functionName} > CheckJavaInstalled ${nocolor}\n"
-    fi
-
+CheckForJavaInstall () {
     if [ -z "$JAVA_HOME" ]; then
-        if [ "$g_isVerboseActive" == "true" ]; then
-            printf "${red}JAVA_HOME not set${nocolor}\n"
-        fi
+        g_isJavaInstalled="false"
+        printf "${red}JAVA_HOME is not set${nocolor}\n"
+        printf "${yellow}Please install java and set JAVA_HOME variable ${gray}(./docs/linux-install.md)${nocolor}\n"
     else
-        if [ -f "$JAVA_HOME/bin/java" ]; then
-            CheckIfJavaInstall="true"
-        else
-            if [ "$g_isVerboseActive" == "true" ]; then
-                printf "${red}JAVA_HOME/bin/java not found${nocolor}\n"
-            fi
-        fi
+        g_isJavaInstalled="true"
     fi
 }
 
-# @Function : Install java version passed in param
+
+
+################################
+## MINECRAFT SERVER FUCNTIONS ##
+################################
+
+# @Function : Start server a first time to initialize files and folders
 # @Params
-#  - $1 version (8 or 11)
-# @Result : var $InstallJavaVersion_failed available
-# @UseCase :
-# - InstallJavaVersion "8"
-# - if [ "$InstallJavaVersion_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
-InstallJavaVersion () {
-    InstallJavaVersion_failed="false"
-    version=$1
+#  - $1 servername
+#  - $2 serverVersion
+#  - $3 memory
+# @UseCase : 
+#  - InitialiseServer "my-server.1.19.3" "1.19.3" "1024M"
+#  - if [ "$InitialiseServer_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
+InitialiseServer () {
+    InitialiseServer_failed="false"
+    local servername=$1
+    local serverVersion=$2
+    local memory=$3
 
-    if [ "$g_isVerboseActive" == "true" ]; then
-        printf "${c__functionName} > InstallJavaVersion ${nocolor}\n"
-    fi
-
-    if [ -z "$version" ]; then
-        InstallJavaVersion_failed="true"
-        if [ "$g_isVerboseActive" == "true" ]; then
-            printf "${red}version param is empty${nocolor}\n"
-        fi
+    # test if param servername is empty
+    if [ -z "$servername" ]; then
+        printf "${red}servername param is empty${nocolor}\n"
+        InitialiseServer_failed="true"
     else
-        UpdateJavaRepo
 
-        case $version in
-            8)
-                if [ "$g_isVerboseActive" == "true" ]; then
-                    printf "${gray}Installing java version ${green}${version}${nocolor}\n"
-                fi
-                sudo apt-get install oracle-java8-installer
-            ;;
-            16)
-                if [ "$g_isVerboseActive" == "true" ]; then
-                    printf "${gray}Installing java version ${green}${version}${nocolor}\n"
-                fi
-                sudo apt-get install oracle-java16-installer
-            ;;
-            17)
-                if [ "$g_isVerboseActive" == "true" ]; then
-                    printf "${gray}Installing java version ${green}${version}${nocolor}\n"
-                fi
-                sudo apt-get install oracle-java17-installer
-            ;;
-            *)
-                InstallJavaVersion_failed="true"
-                if [ "$g_isVerboseActive" == "true" ]; then
-                    printf "${red}version ${version} not supported${nocolor}\n"
-                fi
-            ;;
-        esac
+        # test if param serverVersion is empty
+        if [ -z "$serverVersion" ]; then
+            printf "${red}serverVersion param is empty${nocolor}\n"
+            InitialiseServer_failed="true"
+        else
+            local serverDir="${g_serversDIR}/${servername}.${serverVersion}"
+            # test if dir exists
+            if [ ! -d "instances/${serverDir}" ]; then
+                printf "${red}server \"${serverDir}\" dir not found${nocolor}\n"
+                InitialiseServer_failed="true"
+            else
+
+                # test if param memory is empty
+                if [ -z "$memory" ]; then
+                    printf "${red}memory param is empty${nocolor}\n"
+                    InitialiseServer_failed="true"
+                else
+
+                    if ! [[ "$memory" =~ ^([0-9]+)[MG]$ ]]; then
+                        printf "${red}Memory must be a valid number and quantifier ([0-9][MG]${nocolor}\n"
+                        InitialiseServer_failed="true"
+                    else
+                        
+                        printf "\n${yellow}launch server a first time to initialize${nocolor}\n"
+                        printf "${graydim}"
+
+                        local actualDir=$(pwd)
+                        cd ${serverDir}
+                        java -Xmx$memory -Xms$memory -jar "server.${serverVersion}.jar" nogui
+                        cd ${actualDir}
+
+                        printf "${nocolor}";
+                        printf "${yellow}Server stop due to incorrects eula terms${nocolor}\n"
+                        
+                        printf "${red}"
+                        echo "eula=true" >> "${serverDir}/eula.txt"
+                        printf "${nocolor}";
+                        
+                        printf "${green} EULA terms accepted${nocolor}\n"
+
+                    fi
+                fi # endof if memory param
+
+            fi # endof if dir exists
+
+        fi # endof if serverVersion param       
+        
+    fi # endof if serverDirName param
+}
+
+# @Function : Start the server
+# @Params
+#  - $1 servername
+#  - $2 serverVersion
+#  - $3 memory
+# @UseCase : 
+#  - StartServer "my-server.1.19.3" "1.19.3" "1024M"
+#  - if [ "$StartServer_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
+StartServer () {
+    StartServer_failed="false"
+    local servername=$1
+    local serverVersion=$2
+    local memory=$3
+
+    # test if param servername is empty
+    if [ -z "$servername" ]; then
+        printf "${red}servername param is empty${nocolor}\n"
+        StartServer_failed="true"
+    else
+
+        # test if param serverVersion is empty
+        if [ -z "$serverVersion" ]; then
+            printf "${red}serverVersion param is empty${nocolor}\n"
+            StartServer_failed="true"
+        else
+            local serverDir="${g_serversDIR}/${servername}.${serverVersion}"
+            # test if dir exists
+            if [ ! -d "${serverDir}" ]; then
+                printf "${red}server \"${serverDir}\" not found${nocolor}\n"
+                StartServer_failed="true"
+            else
+
+                ## test si fichiers présents
+                if [ ! -d "${serverDir}/libraries" ]; then
+                    printf "${red}server is not initialized ${graydim}(libraries/ dir not found)${nocolor}\n"
+                    StartServer_failed="true"
+                else
+
+                    # test if param memory is empty
+                    if [ -z "$memory" ]; then
+                        printf "${red}memory param is empty${nocolor}\n"
+                        StartServer_failed="true"
+                    else
+
+                        if ! [[ "$memory" =~ ^([0-9]+)[MG]$ ]]; then
+                            printf "${red}Memory must be a valid number and quantifier ([0-9][MG]${nocolor}\n"
+                            StartServer_failed="true"
+                        else
+                            
+                            printf "\n${yellow}Start \"${servername}\" server${nocolor}\n"
+                            printf "${graydim}"
+
+                            local actualDir=$(pwd)
+                            cd ${serverDir}
+                            java -Xmx$memory -Xms$memory -jar "server.${serverVersion}.jar" nogui
+
+                        fi
+                    fi # endof if memory param
+
+                fi # endof if dir exists
+
+            fi # endof if dir exists
+
+        fi # endof if serverVersion param       
+        
+    fi # endof if serverDirName param
+}
+
+
+
+
+#######################
+## INSTALL FUNCTIONS ##
+#######################
+
+CheckCmdInstalled () {
+    CheckIfCmdInstall="false"
+    
+    if [ -d "$g_loaderDIR" ]; then
+        CheckIfCmdInstall="true"
+    else
+        CheckIfCmdInstall="false"
     fi
 }
-# TODO: TEST THIS FUNCTION  
-UpdateJavaRepo () {
-    sudo add-apt-repository ppa:linuxuprising/java
-    sudo apt update
+CheckCmdInstalled_explicit () {
+    if [ -d "$g_loaderDIR" ]; then
+        printf "${green}Server Manager is already installed${nocolor}\n"
+    else
+        printf "${yellow}No install found, try ${gray}${commandName} --install${nocolor}\n"
+    fi
 }
+
+InstallCmd () {
+    CloneRepo
+    ClearDir "./docs"
+    ClearDir "./loader"
+
+    ROOTFILES="${g_tmpInstallDIR}/*"
+    for rf in $ROOTFILES; do
+        # printf "  ${gray}Processing${white} $rf${nocolor} "
+        if [[ -d $rf ]]; then
+            # printf "${blue}as directory${nocolor}\n"
+
+            rootDir="$(basename -- $rf)"
+
+            CreateDir $rootDir
+
+            FILES="${rf}/*"
+            for f in $FILES; do
+                # printf "${gray}Processing${white} $f ${nocolor} "
+                if [[ -d $f ]]; then
+
+                    if [ "$g_isVerboseActive" == "true" ]; then
+                        # printf "${blue}as directory${nocolor}\n"
+                        printf "${yellow}nothing to do${nocolor}\n"
+                    fi
+
+                elif [[ -f $f ]]; then
+                    # printf "${white}as file${nocolor}\n"
+                    basename="$(basename -- $f)"
+
+                    CopyFile "${basename}" "${rootDir}"
+                fi
+            done
+        elif [[ -f $rf ]]; then
+            # printf "${white}as file${nocolor}\n"
+            basename="$(basename -- $rf)"
+
+            CopyFile "${basename}" "."
+        fi
+        
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "\n"
+        fi
+    done
+    ClearDir "$g_tmpInstallDIR"
+}
+
+
+
+
 
 
 
@@ -486,7 +717,7 @@ AskForInstall () {
             read -p "Do you wish to install this command (y/n) ? " yn
             case $yn in
                 [Yy]* ) 
-                    InstallIfNot
+                    InstallCmd
                     break
                 ;;
                 [Nn]* ) exit;;
@@ -587,12 +818,41 @@ AskForServerName () {
     done
 
     serverName="${serverFullName// /-}"
-    if [ ! -n "${serverName}" ]; then
-        serverName="${defaultserverfullname// /-}"
-    fi
+    serverName=$(echo "$serverName" | tr '[:upper:]' '[:lower:]')
     
     if [ "$g_isVerboseActive" == "true" ] ; then
         printf "${gray}server name :${green} ${serverFullName} ${graydim}(${serverName})${nocolor}\n"
+    fi
+}
+
+# @Function : Ask for how memory the server will use
+# @Result : vars $memorySelected availables
+# @UseCase : AskForMemory
+AskForMemory () {
+    AskForMemory_failed="false"
+    memorySelected=""
+
+    printf "\n${whitebold}Memory${nocolor}\n"
+    
+    while true; do
+        read -p $'\033[0;32m  Choose a memory for your server (in MB) :\033[0m ' memory
+
+        if [ -z "$memory" ]; then
+            printf "${red}Memory can't be empty${nocolor}\n"
+            continue
+        fi
+
+        if ! [[ "$memory" =~ ^[0-9]+$ ]]; then
+            printf "${red}Memory must be a number${nocolor}\n"
+            continue
+        fi
+
+        memory="${memory}M"
+        break
+    done
+
+    if [ "$g_isVerboseActive" == "true" ] ; then
+        printf "${gray}memory :${green} ${memory} ${nocolor}\n"
     fi
 }
 
@@ -640,7 +900,7 @@ AskForPropertyValue () {
         AskForPropertyValue_failed="true"
 
         if [ "$g_isVerboseActive" == "true" ] ; then
-            printf "${red}property param is empty${nocolor}"
+            printf "${red}property param is empty${nocolor} "
         fi
     fi # endof if param is empty
 
@@ -728,7 +988,7 @@ AskForPropertyValue () {
         ;;
         
         array)
-            propertyValuesAsString=${ga_propertiesValues[$property]}
+            propertyValuesAsString=${ga_loaderServerProperties[$property]}
             IFS=' ' read -ra propertyValuesAsArray <<< "$propertyValuesAsString"
 
             printf "${graybold}availables values for ${property}\n${nocolor}"
@@ -762,112 +1022,6 @@ AskForPropertyValue () {
 
 
 
-#######################
-## INSTALL FUNCTIONS ##
-#######################
-
-# @Function : List all lines from a directory with regex filter (arg 2)
-# @Params
-#   $1 repository
-# @LastMessage: "Start clonning"
-# UseCase : CloneRepo
-CloneRepo () {
-    repo=$1
-    repoDir="tmp"
-
-    if [ "$g_isVerboseActive" == "true" ]; then
-        printf "${gray}Start cloning repository ...${nocolor}\n"
-    fi
-
-    ClearDir $repoDir
-    mkdir $repoDir
-
-    printf "${graydim}"
-    git clone $g_repoName $repoDir
-    printf "\n${nocolor}"
-}
-
-# @Function : Check if srvmng needed files are presents
-# @Result : update CheckIfCmdInstall var
-# @LastMessage: "already installed" or "no install found"
-# @UseCase : CheckCmdInstalled
-#  - if [ "$CheckCmdInstalled" == "false" ]; then echo "cmd not installed" else echo "cmd installed" fi
-CheckCmdInstalled () {
-    CheckIfCmdInstall="false"
-    
-    if [ -d "$g_loaderDIR" ]; then
-        CheckIfCmdInstall="true"
-        # if [ "$g_isVerboseActive" == "true" ]; then
-        #     printf "${graydim}Server Manager is already installed${nocolor}\n"
-        # fi
-    else
-        CheckIfCmdInstall="false"
-        if [ "$g_isVerboseActive" == "true" ]; then
-            printf "${yellow}No install found.${nocolor}\n"
-        fi
-    fi
-}
-
-InstallCmd () {
-    CloneRepo
-    ClearDir "./docs"
-    ClearDir "./loader"
-
-    ROOTFILES="${g_tmpInstallDIR}/*"
-    for rf in $ROOTFILES; do
-        # printf "  ${gray}Processing${white} $rf${nocolor} "
-        if [[ -d $rf ]]; then
-            # printf "${blue}as directory${nocolor}\n"
-
-            rootDir="$(basename -- $rf)"
-
-            CreateDir $rootDir
-
-            FILES="${rf}/*"
-            for f in $FILES; do
-                # printf "${gray}Processing${white} $f ${nocolor} "
-                if [[ -d $f ]]; then
-
-                    if [ "$g_isVerboseActive" == "true" ]; then
-                        # printf "${blue}as directory${nocolor}\n"
-                        printf "${yellow}nothing to do${nocolor}\n"
-                    fi
-
-                elif [[ -f $f ]]; then
-                    # printf "${white}as file${nocolor}\n"
-                    basename="$(basename -- $f)"
-
-                    CopyFile "${basename}" "${rootDir}"
-                fi
-            done
-        elif [[ -f $rf ]]; then
-            # printf "${white}as file${nocolor}\n"
-            basename="$(basename -- $rf)"
-
-            CopyFile "${basename}" "."
-        fi
-        
-
-        if [ "$g_isVerboseActive" == "true" ]; then
-            printf "\n"
-        fi
-    done
-    ClearDir "$g_tmpInstallDIR"
-}
-
-InstallIfNot () {
-    CheckCmdInstalled
-    if [ "$CheckIfCmdInstall" == "false" ]; then
-        InstallCmd 
-        if [ "$g_isVerboseActive" == "true" ]; then
-            printf "\n${gray}Installation ${green}completed !${nocolor}\n"
-        fi
-    fi
-}
-
-
-
-
 ##############
 ## COMMANDS ##
 ##############
@@ -885,7 +1039,7 @@ ListAllServers () {
             printf "${nocolor}"
         else
             printf "${yellow}  No minecraft servers\n${nocolor}"
-            # printf "${gray}Use ${blue}srvmng --deploy ${gray}to create one\n${nocolor}"
+            printf "${yellow}Use ${gray}${commandName} --create ${gray}to create one\n${nocolor}"
         fi
         printf "\n"
     fi
@@ -908,7 +1062,7 @@ ClearAllServers () {
             fi
         else
             printf "${yellow}  No minecraft servers\n${nocolor}"
-            # printf "${gray}Use ${blue}srvmng --deploy ${gray}to create one\n${nocolor}"
+            printf "${yellow}Use ${gray}${commandName} --create ${gray}to create one\n${nocolor}"
         fi
         printf "\n"
     fi
@@ -929,29 +1083,97 @@ CreateServer () {
     SelectForVersion
     local current_version=$versionUsed
 
+    # test java version
+    
+    # fin test java version
+
     local current_dirName="${current_serverName}.${current_version}"
 
     CheckExistingServer "${current_dirName}"
     if [ "$serverExists" == "true" ]; then 
         RenameServer "${current_dirName}"
     fi
+    local serverDir="${g_serversDIR}/${current_dirName}"
+    CreateDir "$serverDir"
 
-    CreateDir "${g_serversDIR}/${current_dirName}"
+    DownloadMinecraftServerVersion "${current_version}"
+    if [ "$DownloadMinecraftServerVersion_failed" == "true" ]; then
+        echo "error when download"
+    else
+        echo "download ok | file present"
 
-    # TODO: test this code
+        cp "${g_downloadDIR}/server.${versionUsed}.jar" "${serverDir}"
+        
+        # test if file just copied is present
+        if [ ! -f "${serverDir}/server.${versionUsed}.jar" ]; then
+            echo "file not copied"
+        else
+            echo "file copied"
 
+            InitialiseServer "${current_serverName}" "${current_version}" "1024M"
+            if [ "$InitialiseServer_failed" == "true" ]; then
+                printf "${red}Create server ${gray}\"${current_serverFullName}\" ${graydim}(${current_serverName})${red} with version ${gray}\"${current_version}\"${red} failed${nocolor}\n"
+            else 
+                printf "${gree}Server ${gray}\"${current_serverFullName}\" ${graydim}(${current_serverName})${red} with version ${gray}\"${current_version}\"${red} create with success !${nocolor}\n"
+            fi
+        fi
+    fi
 }
 
-StartServer () {
-    echo "start server"
+# StartServer () {
+#     echo "start server"
+
+#     SelectServer
+
+#     AskForMemory
+#     local memory=$memorySelected
+
+#     StartServer "my-server.1.19.3" "1.19.3" "1024M"
+#     if [ "$StartServer_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
+# }
+
+
+
+
+##########
+## HELPERS ##
+##########
+
+StartText () {
+    printf "\n${blue}This script is made for generate a READY-TO-USE minecraft server.
+Follow the next steps to deploy your server !${nocolor}\n"
+HelperScreenIssue
 }
-
-
+HelperScreenIssue () {
+    printf "${yellow}  /!\ Be careful ! /!\ \n"
+    printf "this command launch server console directly on this command prompt.\n"
+    printf "A future evolution is to put the command that start the server into a screen session${nocolor}\n"
+    # printf "${red}Screen is not installed. Please install it with : ${gray}sudo apt install screen${nocolor}\n"
+    # screen -S session_name
+}
+HowToUse () {
+    printf "${gray}
+${commandName} [ -i | --install : download and install command ]
+       [ --checkInstall : verify that command is installed ]
+       [ --create       : create a server ]
+       [ -l | --list    : list all servers ]
+       [ -s | --start   : start a server ]
+       [ --clear        : clear all the instances ]
+       [ -h | --help    : show this message ]
+${graydim}See https://github.com/alexiscotel/minecraftserver_command/README.md for more explainations${nocolor}\n"
+}
 
 #####
 ## START SCRIPT
 #####
-options=$(getopt -a -n srvmng -o ilsh --long install,list,create,start,clear,help -- "$@")
+clear
+
+CheckForJavaInstall
+if [ "$g_isJavaInstalled" == "false" ]; then
+    exit 0;
+fi
+
+options=$(getopt -a -n ${commandName} -o ilsh --long install,checkInstall,create,list,start,clear,help -- "$@")
 [ $? -eq 0 ] || { 
     printf "${red}Incorrect options provided${nocolor}\n"
     exit 1
@@ -960,26 +1182,41 @@ eval set -- "$options"
 while true; do
     case "$1" in
     -i | --install)
-        InstallIfNot
+        if [ "$CheckIfCmdInstall" == "true" ]; then
+            printf "${green}Server Manager is already installed${nocolor}\n"
+        else
+            InstallCmd
+        fi
         break
         ;;
-    -l | --list)
-        InstallIfNot        
-        ListAllServers
+    --checkInstall)
+        CheckCmdInstalled_explicit
         break
         ;;
     --create)
-        InstallIfNot        
-        CreateServer
+        CheckCmdInstalled
+        if [ "$CheckIfCmdInstall" == "true" ]; then
+            CreateServer
+        else
+            printf "${red}No install found. use ${gray}${commandName} --install${nocolor} ${nocolor}\n"
+        fi
+        break
+        ;;
+    -l | --list)
+        ListAllServers
         break
         ;;
     -s | --start)
-        InstallIfNot        
-        StartServer
+        CheckCmdInstalled
+        if [ "$CheckIfCmdInstall" == "true" ]; then
+            HelperScreenIssue
+            StartServer
+        else
+            printf "${red}No install found. use ${gray}${commandName} --install${nocolor} ${nocolor}\n"
+        fi
         break
         ;;
     --clear)
-        InstallIfNot        
         ClearAllServers
         break
         ;;
@@ -990,6 +1227,10 @@ while true; do
     --)
         StartText
         HowToUse
+        CheckCmdInstalled
+        if [ "$CheckIfCmdInstall" == "false" ]; then
+            AskForInstall
+        fi
         break
         ;;
     esac
