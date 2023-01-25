@@ -1,4 +1,5 @@
 # Configure a minecraft server on your own machine!
+
 Simple steps to deploy minecraft server on linux machine. This instructions are sets in order to run minecraft server 1.19.3, with java 17
 
 ## Start by install linux environement
@@ -7,56 +8,98 @@ follow this documentations:
 - [minecraft installation](./docs/minecraft-install.md) (docs/minecraft-install.md)
 
 ## Usage of commands
-There is a main command `bash srvmng` ([srvmng file](./srvmng)) used to manage severals actions on server instances. Arguments are required. there is the list :
--  `bash srvmng -i | --install` with `force` param optional (allow to re-install the command)
--  `bash srvmng -l | --list`
--  `bash srvmng -s | --start` with `[version] [servername] [memory]` optionals
--  `bash srvmng -d | --deploy` with `[version] [servername] [memory]` optionals
--  `bash srvmng --config` with `[version] [servername] [memory]` optionals
--  `bash srvmng --clear`
-- `bash srvmng -h | --help`
+There is a main command `bash srvmng` used to manage severals actions on server instances. First argument is required. There is the list :
+
+| Commands        | How to use           |
+| :--- |:---|
+| [Install](#install-the-command)| `srvmng --install` |
+| [Check install](#check-the-installation) | `srvmng --checkInstall` |
+| [Create](#create-a-instance) | `srvmng --create` |
+| [Config](#configure-a-instance) | `srvmng --config` |
+| [List](#list-all-instances) | `srvmng --list` |
+| [Start](#start-an-instance) | `srvmng --start` |
+| [Connect](#connect-to-an-instance) | `srvmng --connect` |
+| [Remove](#remove-an-instance) | `srvmng --remove` |
+| [Clear](#clear-all-instances) | `srvmng --clear` |
+| [Help](#getting-help) | `srvmng --help` |
+
+---
 
 ### Install the command
-In order to install the command, use the flag `--install` or use the command `bin/install` ([install file](./bin/install))
+In order to install the command, use the flag `--install`
 You can force the installation passing `force` to `--install` flag :
-- `srvmng --install`
-- `srvmng --install force`
+-  `srvmng --install`
+-  `srvmng --install force`
 
 Make file executable with `chmod +x srvcraft`
 Then, add to your path (to use command like this `srvmng --create` instead of `bash srvmng --create`)
 
+---
 
-### List all Instances
-To list all existing instances, use the flag `--list` or use the command `bin/list` ([list file](./bin/list))
+### Check the installation
+In order to check if command is correctly installed, use the flag `--checkInstall`
 
-### Start a instance
-To Start an existing instance, use the flag `--start` or use the command `bin/start` ([start file](./bin/start))
-You have to pass following parameters, **in order**:
-- Version, required
-- Server name, required too (in double quote : `bash bin/start 1.19.3 "My server"`)
-- Memory (required a symbol of unit : M for megabyte, G for gegabyte, ...)
+Ex : `srvmng --checkInstall`
 
-Ex : `srvmng --start 1.19.3 "My Server"`
+---
 
 ### Create a instance
-To create and deploy instance, use the flag `--deploy` or use the command `bin/deploy` ([deploy file](./bin/deploy)). You can pass following parameters:
-- Version
-- Server name (in double quote : `bash bin/start 1.19.3 "My server"`)
-- Memory (required a symbol of unit : M for megabyte, G for gegabyte, ...)
-- server.properties conf (only prompt questions)
+To create a new instance, use the flag `--create`
+You can pass parameters, in this order `srvmng --create[version] [servername] [memory]` :
+- Version (in double quote : `srvmng --create "1.19.3"`)
+- Server name (in double quote : `srvmng --create "1.19.3" "My server"`)
+- Memory (in double quote : `srvmng --create "1.19.3" "My server" "2G"`)
 
-Ex : `srvmng --deploy 1.19.3 "My Server" 1024M`
+Ex : `srvmng --create "1.19.3" "My Server" "1024M"`
 
-### config a server.properties file
-To create and config a server.properties file, use the flag `--config` or use the command `bin/config` ([config file](./bin/config)). You can pass following parameters :
-- Version
-- Server name (in double quote : `bash bin/start 1.19.3 "My server"`)
-- Memory (required a symbol of unit : M for megabyte, G for gegabyte, ...)
+---
 
-Ex : `srvmng --config 1.19.3 "My Server" 1024M`
+### Configure a instance
+To config the server.properties file from the desired instance, use the flag `--config`
+Ex : `srvmng --config`
+
+---
+
+### List all Instances
+To list all existing instances, use the flag `--list`
+
+---
+
+### Start an instance
+To Start an existing instance, use the flag `--start`
+You can pass parameters, in this order `srvmng --start [version] [servername] [memory]` :
+- Version (in double quote : `srvmng --start "1.19.3"`)
+- Server name (in double quote : `srvmng --start "1.19.3" "My server"`)
+- Memory (in double quote : `srvmng --start "1.19.3" "My server" "2G"`)
+
+Ex : `srvmng --start 1.19.3 "My Server" "1024M"`
+
+---
+
+### Connect to an instance
+To connect to a running instance, use the flag `--connect`
+It will ask you wich server do you want to connect.
+
+Ex : `srvmng --connect`
+
+---
+
+### Remove an instance
+To Remove a server folder or screen instance, use the flag `--remove`
+It will ask you if you want to delete directory or screen.
+Then ask wich server/screen have to be deleted
+
+Ex : `srvmng --start 1.19.3 "My Server" "1024M"`
+
+---
 
 ### Clear all Instances
-To clear all existing instances , use the flag `--clear` or use the command `bin/clear` ([clear file](./bin/clear)). 
+To clear all existing instances, use the flag `--clear`
+
+---
+
+### Getting help
+To show help message, use the flag `--help`
 
 
 # References
