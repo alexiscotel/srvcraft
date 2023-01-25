@@ -22,6 +22,9 @@ You can force the installation passing `force` to `--install` flag :
 - `srvmng --install`
 - `srvmng --install force`
 
+Make file executable with `chmod +x srvcraft`
+Then, add to your path (to use command like this `srvmng --create` instead of `bash srvmng --create`)
+
 
 ### List all Instances
 To list all existing instances, use the flag `--list` or use the command `bin/list` ([list file](./bin/list))
