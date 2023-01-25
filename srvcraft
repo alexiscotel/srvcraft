@@ -44,6 +44,8 @@ g_serversDIR="./instances"
 g_loaderDIR="./loader"
 g_downloadDIR="${g_loaderDIR}/downloads"
 
+g_screenPrefix="mcserver"
+
 ## PRINT
 g_isVerboseActive="true"
 g_isDoubleVerboseActive="false"
@@ -605,7 +607,7 @@ CheckForJavaInstall () {
 
 
 ################################
-## MINECRAFT SERVER FUCNTIONS ##
+## MINECRAFT SERVER FUNCTIONS ##
 ################################
 
 # @Function : Start server a first time to initialize files and folders
@@ -662,7 +664,7 @@ InitialiseServer () {
                 printf "${yellow}Server stop due to incorrects eula terms${nocolor}\n"
                 
                 printf "${red}"
-                echo "eula=true" >> "${serverDir}/eula.txt"
+                echo "eula=true" > "${serverDir}/eula.txt"
                 printf "${nocolor}";
 
                 printf "${blueblink} EULA terms accepted${nocolor}\n"
@@ -723,9 +725,16 @@ StartServer () {
 
                     printf "${gray}"
 
-                    local actualDir=$(pwd)
-                    cd ${serverDir}
-                    java -Xmx$memory -Xms$memory -jar "${jar}" nogui
+                    # local actualDir=$(pwd)
+                    # cd ${serverDir}
+                    # java -Xmx$memory -Xms$memory -jar "${jar}" nogui
+                    StartScreenSession "$1" "$2"
+                    if [ "$StartScreenSession_failed" == "true" ]; then
+                        echo "Job failed"
+                    else 
+                        echo "Job done"
+                    fi
+
                 fi
 
             fi # endof if dir exists
@@ -735,6 +744,405 @@ StartServer () {
     fi # endof if serverDirName param
 }
 
+
+
+######################
+## SCREEN FUNCTIONS ##
+######################
+
+# @Function : Check if screen session passed in param exists
+# @Params
+#  - $1 sessionName
+# @UseCase : 
+#  - CheckIfScreenSessionExists "toto.1.19.2"
+#  - if [ "$CheckIfScreenSessionExists_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
+CheckIfScreenSessionExists () {
+    CheckIfScreenSessionExists_failed="false"
+    local sessionName=$1
+
+    screenSessionExists="false"
+
+    # test if param is empty
+    if [ -z "$sessionName" ]; then
+        CheckIfScreenSessionExists_failed="true"
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${red}Checking screen session : sessionName param is empty${nocolor}\n"
+        fi
+    else
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${gray}Start checking session \"${sessionName}\" ...${nocolor}\n"
+        fi
+
+        local test=$(screen -list | grep "${sessionName}")
+        if [ -z "$test" ]; then
+            screenSessionExists="false"
+
+            if [ "$g_isVerboseActive" == "true" ]; then
+                printf "${yellow}Screen session ${whiite}\"${sessionName}\"${yellow} does not exists${nocolor}\n"
+            fi
+        else
+            if [[ "$test" =~ ^(No Sockets found) ]]; then
+                screenSessionExists="false"
+                if [ "$g_isVerboseActive" == "true" ]; then
+                    printf "${yellow}Screen session ${whiite}\"${sessionName}\"${yellow} does not exists${nocolor}\n"
+                fi
+            else
+                screenSessionExists="true"
+                if [ "$g_isDoubleVerboseActive" == "true" ]; then
+                    printf "${gray}Screen session exists${nocolor}\n"
+                fi
+            fi
+        fi
+    fi
+}
+
+# @Function : Start a server in a screen session
+# @Params
+#  - $1 sessionName
+# @UseCase : 
+#  - StartScreenSession "toto.1.19.2"
+#  - if [ "$StartScreenSession_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
+StartScreenSession () {
+    StartScreenSession_failed="false"
+    local serverName=$1
+
+    if [ "$g_isVerboseActive" == "true" ]; then 
+        printf "${whiite}Starting screen command ...${nocolor}\n"
+    fi
+
+    # test if param is empty
+    if [ -z "$serverName" ]; then
+        printf "${red}sessionName param is empty${nocolor}\n"
+        StartScreenSession_failed="true"
+    else
+        sessionName="${g_screenPrefix}.${serverName}"
+
+        CheckIfScreenSessionExists "${sessionName}"
+        if [ "$CheckIfScreenSessionExists_failed" == "true" ]; then
+            printf "${red}CheckIfScreenSessionExists failed${nocolor}\n"
+        else
+
+            if [ "$screenSessionExists" == "true" ]; then
+                StartScreenSession_failed="true"
+                printf "${yellow}Session ${whiite}\"${sessionName}\"${yellow} allready exists${nocolor}\n"
+                printf "${gray}Use ${whiite}\"screen -r ${sessionName}\"${nocolor} to attach to it\n"
+            else 
+                if [ ! -d "${g_serversDIR}/${serverName}" ]; then
+                    StartScreenSession_failed="true"
+                    printf "${red}Server ${whiite}\"${serverName}\"${red} not found${nocolor}\n"
+                else
+                    local jar=$(ls -1 "${g_serversDIR}/${serverName}" | grep ".*\.jar")
+                    memory="2048M"
+                    echo $jar
+
+                    local actualDir=$(pwd)
+                    cd "${g_serversDIR}/${serverName}"
+                    screen -S "${sessionName}" -dm bash -c "java -Xmx$memory -Xms$memory -jar "${jar}" nogui && exec sh"
+                    AttachToScreen "${sessionName}"
+                    # screen -S "${sessionName}" -dm bash -c "exec sh"
+                    
+                    if [ "$AttachToScreen_failed" == "true" ]; then 
+                        printf "${red}Screen failed to attach${nocolor}\n"
+                    else
+                        printf "${gray}Screen was attached ${green}with success${nocolor}\n"
+                    fi
+                fi
+            fi
+        fi
+    fi
+}
+
+# @Function : Attach the current terminal to passed in param screen session
+# @Params
+#  - $1 sessionName
+# @UseCase : 
+#  - AttachToScreen "mcserver.toto.1.19.2"
+#  - if [ "$AttachToScreen_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
+AttachToScreen () {
+    echo "attach to screen"
+
+    AttachToScreen_failed="false"
+    local sessionName=$1
+
+    # test if param is empty
+    if [ -z "$sessionName" ]; then
+        printf "${red}sessionName param is empty${nocolor}\n"
+        AttachToScreen_failed="true"
+    else
+        CheckIfScreenSessionExists "${sessionName}"
+        if [ "$CheckIfScreenSessionExists_failed" == "true" ]; then
+            printf "${red}AttachToScreen failed${nocolor}\n"
+        else 
+            # printf "AttachToScreen ${green}done${noclor}\n"
+
+            if [ "$screenSessionExists" == "false" ]; then
+                printf "${yellow}Session ${whiite}\"${sessionName}\"${yellow} not found${nocolor}\n"
+            else 
+                printf "${gray}Session ${whiite}\"${sessionName}\"${green} found${nocolor}\n"
+
+                screen -r "${sessionName}"
+            fi
+        fi
+    fi
+}
+
+# @Function : Detach the passed in param screen from TTY
+# @Params
+#  - $1 sessionName
+# @UseCase : 
+#  - DetachFromScreen "toto.1.19.2"
+#  - if [ "$DetachFromScreen_failed" == "true" ]; then echo "Job failed" else echo "Job done" fi
+DetachFromScreen () {
+    echo "detach from screen"
+
+    DetachFromScreen_failed="false"
+    local sessionName=$1
+
+    # test if param is empty
+    if [ -z "$sessionName" ]; then
+        printf "${red}sessionName param is empty${nocolor}\n"
+        DetachFromScreen_failed="true"
+    else
+        CheckIfScreenSessionExists "${sessionName}"
+        if [ "$CheckIfScreenSessionExists_failed" == "true" ]; then
+            printf "${red}DetachFromScreen failed${nocolor}\n"
+        else 
+            # printf "DetachFromScreen ${green}done${noclor}\n"
+
+            if [ "$screenSessionExists" == "false" ]; then
+                printf "${yellow}Session ${whiite}\"${sessionName}\"${yellow} not found${nocolor}\n"
+            else 
+                printf "${gray}Session ${whiite}\"${sessionName}\"${green} found${nocolor}\n"
+
+                screen -d "${sessionName}"
+                # screen -S "${sessionName}" -p 0 -X kill
+            fi
+        fi
+    fi
+}
+
+# @Function : List all mcserver screen sessions
+# @UseCase : 
+#  - ListScreenSessions
+ListScreenSessions () {
+    serverSessionRunning="false"
+    
+    local screenCmd=$(screen -list | grep "$g_screenPrefix")
+    if [ -z "$screenCmd" ]; then
+        serverSessionRunning="false"
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${orange}No screen sessions found with ${yellow}\"mcserver\"${orange} prefix${nocolor}\n"
+        fi
+    else
+        if [[ "$screenCmd" =~ ^(No Sockets found) ]]; then
+            serverSessionRunning="false"
+            if [ "$g_isVerboseActive" == "true" ]; then
+                printf "${green}No screen session running${nocolor}\n"
+            fi
+        else
+            if [ "$g_isVerboseActive" == "true" ]; then
+                printf "${whiite}List of screen sessions :${nocolor}\n"
+            fi
+
+            local startLine="There"
+
+            cmdScreenNameArray=()
+            while IFS= read -r line; do
+                cmdScreenNameArray+=( "$line" )
+            done < <( screen -list | grep "$g_screenPrefix" | awk '{print $1}' )
+            cmdScreenStatusArray=()
+            while IFS= read -r line; do
+                cmdScreenStatusArray+=( "$line" )
+            done < <( screen -list | grep "$g_screenPrefix" | awk '{print $4}' )
+
+            for i in "${!cmdScreenNameArray[@]}"; do 
+                if [[ ${cmdScreenNameArray[$i]} != "There"* ]] && [[ ${cmdScreenStatusArray[$i]} != "/run"* ]]; then
+                    local cmdScreenName=${cmdScreenNameArray[$i]}
+                    cmdScreenName=${cmdScreenName:6}
+
+                    local cmdScreenStatus=${cmdScreenStatusArray[$i]}
+                    cmdScreenStatus=$(echo "${cmdScreenStatus}" | sed 's/[)(]//g')
+
+                    local color="${gray}"
+                    if [ "$cmdScreenStatus" == "Attached" ]; then
+                        color="${green}"
+                    elif [ "$cmdScreenStatus" == "Detached" ]; then
+                        color="${yellow}"
+                    else
+                        color="${graydim}"
+                    fi
+
+                    printf "${color}${cmdScreenStatus}${nocolor} ${cmdScreenName}\n"
+                fi
+            done
+
+
+            # serverSessionRunning="true"
+            # if [ "$g_isVerboseActive" == "true" ]; then
+            #     printf "${yellow}At least one screen is running${nocolor}\n"
+            # fi
+        fi
+    fi
+}
+
+# @Function : Clear all mcserver screen sessions that detached
+# @UseCase : 
+#  - ClearDetachedScreens
+ClearDetachedScreens () {
+    screen -list | grep "$g_screenPrefix" | grep Detached | awk '{print $1}' | while read in; 
+    do 
+        screen -X -S $in quit
+
+        cmdScreenName=${in:6}
+        printf "${graydim}Delete screen ${gray}\"$cmdScreenName\" ${graydim}...${nocolor}\n"
+    done
+}
+
+# @Function : Attach the current terminal to passed in param screen session
+# @Params
+#  - $1 screenName
+# @Result :
+#  - AttachScreenSession_failed : true if failed, false if success
+#  - cmdScreenName : 'pid.server-name.version'
+#  - cmdScreenDate : (JJ/MM/AAAA HH:MM:SS)
+#  - cmdScreenStatus : (Attached | Detached)
+# @UseCase : 
+#  - GetScreenInfos "toto.1.19.2"
+#  - if [ "$GetScreenInfos_failed" == "true" ]; then echo "GetScreenInfos failed" else echo "GetScreenInfos done" fi
+GetScreenInfos () {
+    GetScreenInfos_failed="false"
+    screenName=$1
+    
+    if [ -z "$screenName" ]; then
+        GetScreenInfos_failed="true"
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${orange}ScreenName param empty${nocolor}\n"
+        fi
+    else
+        cmdScreenName=""
+        cmdScreenDate=""
+        cmdScreenStatus=""
+        
+        cmd=$(screen -list | awk -v pat="$screenName" '$0 ~ pat')
+
+        if [ -z "$cmd" ]; then
+            if [ "$g_isVerboseActive" == "true" ]; then
+                printf "${red}Screen session not found${nocolor}\n"
+            fi
+        else
+            if [ "$g_isDoubleVerboseActive" == "true" ]; then
+                printf "${green}Screen session found${nocolor}\n"
+            fi
+            
+            IFS=$'\t' read -r -a cmdAarray <<< "$cmd"
+
+            cmdScreenName="${cmdAarray[0]}"
+            cmdScreenName=${cmdScreenName:6}
+
+            cmdScreenDate="${cmdAarray[1]}"
+            cmdScreenDate=$(echo "${cmdScreenDate}" | sed 's/[)(]//g')
+
+            cmdScreenStatus="${cmdAarray[2]}"
+            cmdScreenStatus=$(echo "${cmdScreenStatus}" | sed 's/[)(]//g')
+        fi
+    fi
+}
+
+# @Function : Attach the current terminal to passed in param screen session
+# @Result : fill g_screenList array with current screen list from mcserver
+declare -a g_screenList=()
+GetScreenListForSelection () {
+    g_screenList=()
+    local screenCmd=$(screen -list | grep "$g_screenPrefix")
+
+    if [[ -z "$screenCmd" ]] || [[ "$screenCmd" =~ ^(No Sockets found) ]]; then
+        listEmpty="true"
+        if [ "$g_isDoubleVerboseActive" == "true" ]; then
+            printf "${yellow}No screen session running${nocolor}\n"
+        fi
+    else
+        listEmpty="false"
+
+        local startLine="There"
+
+        cmdScreenNameArray=()
+        while IFS= read -r line; do
+            cmdScreenNameArray+=( "$line" )
+        done < <( screen -list | grep "$g_screenPrefix" | awk '{print $1}' )
+
+        for i in "${!cmdScreenNameArray[@]}"; do 
+            if [[ ${cmdScreenNameArray[$i]} != "There"* ]] && [[ ${cmdScreenStatusArray[$i]} != "/run"* ]]; then
+                local cmdScreenName=${cmdScreenNameArray[$i]}
+                cmdScreenName=${cmdScreenName:6}
+                # cmdScreenName=${cmdScreenName#"$g_screenPrefix."}
+                g_screenList+=( "$cmdScreenName" )
+            fi
+        done
+    fi
+}
+
+# @Function : Ask for screen to use
+# @Result : var versionUsed available
+# @UseCase : SelectForVersion
+#  - if [ "$SelectForVersion_failed" == "true" ]; then echo "SelectScreenSession failed" else echo "screen used : $screenUsed" fi
+SelectScreenSession () {
+    param=$1
+    SelectForVersion_failed="false"
+    screenUsed=""
+    
+    GetScreenListForSelection
+    
+    if [ "${#g_screenList[@]}" -gt 0  ]; then
+        printf "${whiitebold}Select screen${nocolor}\n"
+        PS3='Select screen : '
+        select screen in "${g_screenList[@]}"; do
+            case "$screen" in
+                "") continue ;;
+                *)
+                    screenUsed=$screen
+                    break
+                    ;;
+            esac
+        done
+
+        if [ -z "$screenUsed" ]; then
+            SelectForVersion_failed="true"
+        else
+            if [ "$g_isDoubleVerboseActive" == "true" ] ; then
+                printf "${gray}Screen used :${green} ${screenUsed} ${nocolor}\n"
+            fi
+        fi
+    else
+        printf "${red}No screens in list${nocolor}\n"
+        SelectForVersion_failed="true"
+    fi
+}
+
+# @Function : Remove a screen passed in param
+# @Params
+#  - $1 screenName
+# @UseCase : RemoveScreenSession "mcserver.1.16.5"
+#  - if [ "$RemoveScreenSession_failed" == "true" ]; then echo "RemoveScreenSession failed" else echo "RemoveScreenSession DONE." fi
+RemoveScreenSession () {
+    RemoveScreenSession_failed="false"
+    screenName=$1
+
+    if [ -z "$screenName" ]; then
+        RemoveScreenSession_failed="true"
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${orange}ScreenName param empty${nocolor}\n"
+        fi
+    else
+        printf "${gray}Removing screen ${whiite}\"${screenName}\" ${nocolor}\n"
+        printf "${red}"
+        screen -X -S $screenName quit
+        printf "${nocolor}"
+    fi
+}
 
 
 
@@ -804,9 +1212,6 @@ InstallCmd () {
     done
     ClearDir "$g_tmpInstallDIR"
 }
-
-
-
 
 
 
@@ -964,12 +1369,12 @@ AskForMemory () {
             continue
         fi
 
-        memory="${memory}M"
+        memorySelected="${memory}M"
         break
     done
 
     if [ "$g_isVerboseActive" == "true" ] ; then
-        printf "${gray}memory :${green} ${memory} ${nocolor}\n"
+        printf "${gray}memory :${green} ${memorySelected} ${nocolor}\n"
     fi
 }
 
@@ -1182,13 +1587,34 @@ AskForPropertyValue () {
     fi # endof if param is empty
 }
 
-
-
-# UseCase :
-# SelectProperty 
-# - if [ "$SelectProperty_failed" == "true" ]; then echo "Property empty" else echo "property found $selectedProperty" fi
-# - AskForPropertyValue "$selectedProperty"
-# - if [ "$AskForPropertyValue_failed" == "true" ]; then echo "Property can't be edited" else echo "value assigned (retreive with $propertyValue)" fi
+# @Function : Ask list instances directories or screen sessions
+# @Result : vars $useScreen available
+# @UseCase : 
+# - AskForServOrScreen
+# - if [ "$useScreen" == "true" ]; then echo "list screens" else echo "list directories" fi
+AskForServOrScreen () {
+        #colors
+    promptTextColor=$'\033[0;32m'
+    promptTextColor2=$'\033[0;1;97m'
+    promptNoColor=$'\033[0m'
+    valueColor=$'\033[0;38;5;45m'
+    
+    useScreen="true"
+    while true; do
+        read -e -p "${promptNoColor}Use ${promptTextColor}directories${promptNoColor} or ${promptTextColor}screens${promptNoColor} (d/s) ? ${promptNoColor}" -i "S" dirOrScreen
+        case $dirOrScreen in
+            [Ss]* ) 
+                useScreen="true"
+                break
+                ;;
+            [Dd]* ) 
+                useScreen="false"
+                break
+                ;;
+            * ) printf "${red}Please answer s (screen) or d (directories).${nocolor}\n";;
+        esac
+    done
+}
 
 
 
@@ -1202,15 +1628,20 @@ cmd_ListAllServers () {
         printf "${orange} Directory $g_serversDIR not exists\n${nocolor}"
         CreateDir "$g_serversDIR"
     else
-        nb="$(ls "$g_serversDIR/" | wc -l)"
-        if [ $nb -gt 0 ]; then
-            printf "${green}  Minecraft servers :${whiite} ${nb} ${orange}(TODO: show running)${nocolor}\n"
-            printf "${gray}"
-            ls -ACDtu1 $g_serversDIR
-            printf "${nocolor}"
+        AskForServOrScreen
+        if [ "$useScreen" == "true" ]; then
+            ListScreenSessions
         else
-            printf "${yellow}  No minecraft servers\n${nocolor}"
-            printf "${yellow}Use ${gray}${commandName} --create ${gray}to create one\n${nocolor}"
+            nb="$(ls "$g_serversDIR/" | wc -l)"
+            if [ $nb -gt 0 ]; then
+                printf "${green}  Minecraft servers :${whiite} ${nb} ${orange}(TODO: show running)${nocolor}\n"
+                printf "${gray}"
+                ls -ACDtu1 $g_serversDIR
+                printf "${nocolor}"
+            else
+                printf "${yellow}  No minecraft servers\n${nocolor}"
+                printf "${yellow}Use ${gray}${commandName} --create ${gray}to create one\n${nocolor}"
+            fi
         fi
     fi
 }
@@ -1220,22 +1651,27 @@ cmd_ClearAllServers () {
         printf "${orange} Directory $g_serversDIR not exists\n${nocolor}"
         CreateDir "$g_serversDIR"
     else
-        nb="$(ls "$g_serversDIR/" | wc -l)"
-        if [ $nb -gt 0 ]; then
-            printf "${green}Theses servers will be removed :${nocolor}\n"
-            ls -ACDtu1 $g_serversDIR
-            printf "\n"
-            read -e -p $'\033[0;38;5;178m  Are you sure ?\033[0m O/n : ' -i "n" clearValidation
-            if [ "${clearValidation}" == "O" -o "${clearValidation}" == "o" ]; then
-                ClearDir "${g_serversDIR}"
-            else
-                printf "${graydim}nothing done.${nocolor}\n"
-            fi
+        AskForServOrScreen
+        if [ "$useScreen" == "true" ]; then
+            ClearDetachedScreens
         else
-            printf "${yellow}  No minecraft servers\n${nocolor}"
-            printf "${yellow}Use ${gray}${commandName} --create ${gray}to create one\n${nocolor}"
+            nb="$(ls "$g_serversDIR/" | wc -l)"
+            if [ $nb -gt 0 ]; then
+                printf "${green}Theses servers will be removed :${nocolor}\n"
+                ls -ACDtu1 $g_serversDIR
+                printf "\n"
+                read -e -p $'\033[0;38;5;178m  Are you sure ?\033[0m O/n : ' -i "n" clearValidation
+                if [ "${clearValidation}" == "O" -o "${clearValidation}" == "o" ]; then
+                    ClearDir "${g_serversDIR}"
+                else
+                    printf "${graydim}nothing done.${nocolor}\n"
+                fi
+            else
+                printf "${yellow}  No minecraft servers\n${nocolor}"
+                printf "${yellow}Use ${gray}${commandName} --create ${gray}to create one\n${nocolor}"
+            fi
+            printf "\n"
         fi
-        printf "\n"
     fi
 }
 
@@ -1348,7 +1784,7 @@ cmd_ConfigServer () {
                                     echo "server.properties file not found"
                                 else 
                                     printf "${gray}property ${whiite}$selectedProperty ${gray}update with value ${blue}${propertyValue} ${graydim}(in ${selectedServer}/server.properties) ${nocolor}\n"
-                                    printf "${gray}Use ${whiite} ${commandName} --start ${gray}to start the server ${green}with new config params${nocolor}\n"
+                                    printf "${gray}Use ${whiite} ${commandName}--start ${gray}to start the server with the ${green}new config params${nocolor}\n"
                                 fi
                             fi
                         fi
@@ -1387,6 +1823,8 @@ ${commandName} [ -i | --install : download and install command ]
        [ --create       : create a server ]
        [ -l | --list    : list all servers ]
        [ -s | --start   : start a server ]
+       [ --connect      : connect to a server ]
+       [ --remove       : choose a server to remove ]
        [ --clear        : clear all the instances (ls ${g_serversDIR}) ]
        [ -h | --help    : show this message ]
 ${graydim}See https://github.com/alexiscotel/minecraftserver_command/README.md for more explainations${nocolor}\n"
@@ -1400,7 +1838,7 @@ if [ "$g_isJavaInstalled" == "false" ]; then
     exit 0;
 fi
 
-options=$(getopt -a -n ${commandName} -o ilsh --long install,checkInstall,create,config,list,start,remove,clear,help -- "$@")
+options=$(getopt -a -n ${commandName} -o ilsh --long install,checkInstall,create,config,list,start,connect,remove,clear,help -- "$@")
 [ $? -eq 0 ] || { 
     printf "${red}Incorrect options provided${nocolor}\n"
     exit 1
@@ -1450,6 +1888,16 @@ while true; do
             cmd_StartServer
         else
             printf "${red}No install found. use ${gray}${commandName} --install${nocolor} ${nocolor}\n"
+        fi
+        break
+        ;;
+    --connect)
+        SelectScreenSession
+        if [ "$SelectForVersion_failed" == "true" ]; then
+            printf "${whiite}\"srvcraft --list\"${gray} to list current screen sessions${nocolor}\n"
+            printf "${whiite}\"srvcraft --start\"${gray} to start one${nocolor}\n"
+        else 
+            AttachToScreen "$screenUsed"
         fi
         break
         ;;
