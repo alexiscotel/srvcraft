@@ -1209,6 +1209,13 @@ InstallCmd () {
         if [ "$g_isVerboseActive" == "true" ]; then
             printf "\n"
         fi
+
+        # AskForInstallGlobally
+        # if [ "$installGlobal" == "true" ]; then
+        #     chmod +x srvcraft
+        #     currentDir=$(pwd)
+        #     export PATH=$PATH:$currentDir
+        # fi
     done
     ClearDir "$g_tmpInstallDIR"
 }
@@ -1235,6 +1242,24 @@ AskForInstall () {
             esac
         done
     fi
+}
+
+AskForInstallGlobally () {
+    installGlobal="false"
+    while true; do
+        read -p "Do you wish to install this command globally (y/n) ? " yn
+        case $yn in
+            [Yy]* ) 
+                installGlobal="true"
+                break
+            ;;
+            [Nn]* ) 
+                installGlobal="false"
+                break
+            ;;
+            * ) echo "Please answer yes (y) or no (n).";;
+        esac
+    done
 }
 
 # @Function : Ask for server to use
@@ -1821,6 +1846,7 @@ HowToUse () {
 ${commandName} [ -i | --install : download and install command ]
        [ --checkInstall : verify that command is installed ]
        [ --create       : create a server ]
+       [ --config       : config a server ]
        [ -l | --list    : list all servers ]
        [ -s | --start   : start a server ]
        [ --connect      : connect to a server ]
