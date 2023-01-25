@@ -8,55 +8,55 @@ follow this documentations:
 - [minecraft installation](./docs/minecraft-install.md) (docs/minecraft-install.md)
 
 ## Usage of commands
-There is a main command `bash srvmng` used to manage severals actions on server instances. First argument is required. There is the list :
+There is a main command `bash srvcraft` used to manage severals actions on server instances. First argument is required. There is the list :
 
 | Commands        | How to use           |
 | :--- |:---|
-| [Install](#install-the-command)| `srvmng --install` |
-| [Check install](#check-the-installation) | `srvmng --checkInstall` |
-| [Create](#create-a-instance) | `srvmng --create` |
-| [Config](#configure-a-instance) | `srvmng --config` |
-| [List](#list-all-instances) | `srvmng --list` |
-| [Start](#start-an-instance) | `srvmng --start` |
-| [Connect](#connect-to-an-instance) | `srvmng --connect` |
-| [Remove](#remove-an-instance) | `srvmng --remove` |
-| [Clear](#clear-all-instances) | `srvmng --clear` |
-| [Help](#getting-help) | `srvmng --help` |
+| [Install](#install-the-command)| `srvcraft --install` |
+| [Check install](#check-the-installation) | `srvcraft --checkInstall` |
+| [Create](#create-a-instance) | `srvcraft --create` |
+| [Config](#configure-a-instance) | `srvcraft --config` |
+| [List](#list-all-instances) | `srvcraft --list` |
+| [Start](#start-an-instance) | `srvcraft --start` |
+| [Connect](#connect-to-an-instance) | `srvcraft --connect` |
+| [Remove](#remove-an-instance) | `srvcraft --remove` |
+| [Clear](#clear-all-instances) | `srvcraft --clear` |
+| [Help](#getting-help) | `srvcraft --help` |
 
 ---
 
 ### Install the command
 In order to install the command, use the flag `--install`
 You can force the installation passing `force` to `--install` flag :
--  `srvmng --install`
--  `srvmng --install force`
+-  `srvcraft --install`
+-  `srvcraft --install force`
 
 Make file executable with `chmod +x srvcraft`
-Then, add to your path (to use command like this `srvmng --create` instead of `bash srvmng --create`)
+Then, add to your path (to use command like this `srvcraft --create` instead of `bash srvcraft --create`)
 
 ---
 
 ### Check the installation
 In order to check if command is correctly installed, use the flag `--checkInstall`
 
-Ex : `srvmng --checkInstall`
+Ex : `srvcraft --checkInstall`
 
 ---
 
 ### Create a instance
 To create a new instance, use the flag `--create`
-You can pass parameters, in this order `srvmng --create[version] [servername] [memory]` :
-- Version (in double quote : `srvmng --create "1.19.3"`)
-- Server name (in double quote : `srvmng --create "1.19.3" "My server"`)
-- Memory (in double quote : `srvmng --create "1.19.3" "My server" "2G"`)
+You can pass parameters, in this order `srvcraft --create[version] [servername] [memory]` :
+- Version (in double quote : `srvcraft --create "1.19.3"`)
+- Server name (in double quote : `srvcraft --create "1.19.3" "My server"`)
+- Memory (in double quote : `srvcraft --create "1.19.3" "My server" "2G"`)
 
-Ex : `srvmng --create "1.19.3" "My Server" "1024M"`
+Ex : `srvcraft --create "1.19.3" "My Server" "1024M"`
 
 ---
 
 ### Configure a instance
 To config the server.properties file from the desired instance, use the flag `--config`
-Ex : `srvmng --config`
+Ex : `srvcraft --config`
 
 ---
 
@@ -67,12 +67,12 @@ To list all existing instances, use the flag `--list`
 
 ### Start an instance
 To Start an existing instance, use the flag `--start`
-You can pass parameters, in this order `srvmng --start [version] [servername] [memory]` :
-- Version (in double quote : `srvmng --start "1.19.3"`)
-- Server name (in double quote : `srvmng --start "1.19.3" "My server"`)
-- Memory (in double quote : `srvmng --start "1.19.3" "My server" "2G"`)
+You can pass parameters, in this order `srvcraft --start [version] [servername] [memory]` :
+- Version (in double quote : `srvcraft --start "1.19.3"`)
+- Server name (in double quote : `srvcraft --start "1.19.3" "My server"`)
+- Memory (in double quote : `srvcraft --start "1.19.3" "My server" "2G"`)
 
-Ex : `srvmng --start 1.19.3 "My Server" "1024M"`
+Ex : `srvcraft --start 1.19.3 "My Server" "1024M"`
 
 ---
 
@@ -80,7 +80,7 @@ Ex : `srvmng --start 1.19.3 "My Server" "1024M"`
 To connect to a running instance, use the flag `--connect`
 It will ask you wich server do you want to connect.
 
-Ex : `srvmng --connect`
+Ex : `srvcraft --connect`
 
 ---
 
@@ -89,7 +89,7 @@ To Remove a server folder or screen instance, use the flag `--remove`
 It will ask you if you want to delete directory or screen.
 Then ask wich server/screen have to be deleted
 
-Ex : `srvmng --start 1.19.3 "My Server" "1024M"`
+Ex : `srvcraft --start 1.19.3 "My Server" "1024M"`
 
 ---
 
