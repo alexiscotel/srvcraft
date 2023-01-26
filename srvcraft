@@ -557,11 +557,6 @@ LoadServerPropertiesFile () {
             fi
         done <"$sourceFile"
 
-        for values in "${!ga_serverPropertiesArray[@]}"; do
-            
-        done
-        ga_serverPropertiesArray["$key"]="${value}"
-
         IFS=$'\n' tmp_array_sorted=($(sort <<<"${tmp_array[*]}")); unset IFS
     fi # endof if file exists
 }
@@ -1271,20 +1266,50 @@ InstallCmd () {
         if [ "$g_isVerboseActive" == "true" ]; then
             printf "\n"
         fi
-
-        AskForInstallGlobally
-        if [ "$installGlobal" == "true" ]; then
-            InstallCmdGlobally
-        fi
     done
     ClearDir "$g_tmpInstallDIR"
+
+    AskForInstallGlobally
+    if [ "$installGlobal" == "true" ]; then
+        InstallCmdGlobally
+    fi
 }
 
 InstallCmdGlobally () {
-    chmod +x srvcraft
+    chmod +x $commandName
     currentDir=$(pwd)
-    # export PATH=$PATH:$currentDir
-    sudo ln -s $currentDir/srvcraft /usr/local/bin/srvcraft
+    pathDir="$HOME/bin"
+    bashrc="$HOME/.bashrc"
+
+    if [ ! -d "$pathDir" ]; then
+        mkdir -p "$pathDir"
+    fi
+
+    symLink="$pathDir/$commandName"
+    if [ -L ${symLink} ] ; then
+        echo "symlink exists"
+        if [ -e ${symLink} ] ; then
+            printf "${yellow}symlink already exists. The command is already installed globally${nocolor}\n"
+        else
+            InstallGlobal
+        fi
+    elif [ -e ${symLink} ] ; then
+        InstallGlobal
+    else
+        InstallGlobal
+    fi
+}
+
+InstallGlobal () {
+    printf "${gray}Creating symlink ${graydim}($currentDir/$commandName => $symLink)${nocolor}\n"
+    sudo ln -s $currentDir/$commandName $symLink
+
+    printf "${gray}Update bashrc file${nocolor}\n"
+    echo '# add home/bin to PATH var
+    export PATH="$HOME/bin:$PATH' >> $bashrc
+    printf "${gray}Restart bashrc${nocolor}\n"
+    source $bashrc
+    printf "${gray}To be sure command is available, restart the user session ${graydim}(exit from ssh for example)${nocolor}\n"
 }
 
 
@@ -1298,7 +1323,7 @@ AskForInstall () {
     CheckCmdInstalled
     if [ "$CheckIfCmdInstall" == "false" ]; then
         while true; do
-            read -p "Do you wish to install this command (y/n) ? " yn
+            read -e -p "Do you wish to install this command (y/n) ? " -i "y" yn
             case $yn in
                 [Yy]* ) 
                     InstallCmd
@@ -1314,7 +1339,7 @@ AskForInstall () {
 AskForInstallGlobally () {
     installGlobal="false"
     while true; do
-        read -p "Do you wish to install this command globally (y/n) ? " yn
+        read -e -p "Do you wish to install this command globally (y/n) ? " -i "y" yn
         case $yn in
             [Yy]* ) 
                 installGlobal="true"
