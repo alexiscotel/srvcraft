@@ -44,6 +44,8 @@ graydim='\033[0;2;38;5;250m'
 red='\033[0;91m'
 ## CUSTOM
 c__functionName='\033[0;38;5;45m'
+c__listHeader='\033[0;97m'
+c__listLine='\033[0;38;5;249m'
 
 
 
@@ -1287,12 +1289,7 @@ InstallCmdGlobally () {
 
     symLink="$pathDir/$commandName"
     if [ -L ${symLink} ] ; then
-        echo "symlink exists"
-        if [ -e ${symLink} ] ; then
-            printf "${yellow}symlink already exists. The command is already installed globally${nocolor}\n"
-        else
-            InstallGlobal
-        fi
+        printf "${yellow}The command is already installed globally${nocolor}\n"
     elif [ -e ${symLink} ] ; then
         InstallGlobal
     else
@@ -1304,10 +1301,10 @@ InstallGlobal () {
     printf "${gray}Creating symlink ${graydim}($currentDir/$commandName => $symLink)${nocolor}\n"
     sudo ln -s $currentDir/$commandName $symLink
 
-    printf "${gray}Update bashrc file${nocolor}\n"
+    printf "${gray}Update bashrc file ...${nocolor}\n"
     echo '# add home/bin to PATH var
     export PATH="$HOME/bin:$PATH' >> $bashrc
-    printf "${gray}Restart bashrc${nocolor}\n"
+    printf "${graydim}Try to restart ~/.bashrc${nocolor}\n"
     source $bashrc
     printf "${gray}To be sure command is available, restart the user session ${graydim}(exit from ssh for example)${nocolor}\n"
 }
@@ -2036,6 +2033,7 @@ HowToUse () {
     printf "${gray}
 ${commandName} [ -i | --install : download and install command ]
        [ --checkInstall : verify that command is installed ]
+       [ --setGlobal    : set command usable globally ]
        [ --create       : create a server ]
        [ --config       : config a server ]
        [ -l | --list    : list all servers ]
@@ -2056,7 +2054,7 @@ if [ "$g_isJavaInstalled" == "false" ]; then
     exit 0;
 fi
 
-options=$(getopt -a -n ${commandName} -o ilsh --long install,checkInstall,create,config,list,start,connect,remove,clear,help -- "$@")
+options=$(getopt -a -n ${commandName} -o ilsh --long install,checkInstall,setGlobal,create,config,list,start,connect,remove,clear,help -- "$@")
 [ $? -eq 0 ] || { 
     printf "${red}Incorrect options provided${nocolor}\n"
     exit 1
@@ -2074,6 +2072,10 @@ while true; do
         ;;
     --checkInstall)
         CheckCmdInstalled_explicit
+        break
+        ;;
+    --setGlobal)
+        InstallCmdGlobally
         break
         ;;
     --create)
