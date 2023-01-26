@@ -34,7 +34,7 @@ You can force the installation passing `force` to `--install` flag :
 Make file executable with `chmod +x srvcraft`
 Then, add to your path (to use command like this `srvcraft --create` instead of `bash srvcraft --create`)
 
-`export PATH=$PATH:/path/to/dir/srvcraftDir`
+`export PATH=$PATH:/home/minecraft/srvcraft`
 
 ---
 

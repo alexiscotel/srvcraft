@@ -1,4 +1,22 @@
 #!/bin/bash
+
+####################
+## Minecraft Server Command
+## Author : Alexis Cotel
+## Version : 1.0.0
+## License : MIT
+## See https://github.com/alexiscotel/minecraftserver_command/README.md for more explainations
+####################
+
+# This script is a wrapper for minecraft server jar file
+# It's a bash script with some functions to manage minecraft server
+
+# Minecraft versions Java compatibility
+# 1.12 -> 1.16.5 = Java 8
+# 1.17 -> 1.17.1 = Java 16
+# 1.18 = Java 17
+
+
 commandPath=$0
 commandName=`basename "$commandPath"`
 
@@ -64,7 +82,7 @@ declare -a g_versionsURLList=(
 # Associative array of property name and his value
 declare -A ga_loaderServerProperties
 
-declare -A ga_ServerPropertiesAllowValues=(
+declare -A ga_serverPropertiesAllowValues=(
     ['view-distance']="number"
     ['simulation-distance']="number"
     ['entity-broadcast-range-percentage']="number"
@@ -85,12 +103,12 @@ declare -A ga_ServerPropertiesAllowValues=(
     ['rate-limit']="number"
     ['force-gamemode']="boolean"
     ['gamemode']="array"
-    ['difficulty']="peacefull easy normal hard"
+    ['difficulty']="array"
+    ['level-type']="array"
     ['hardcore']="boolean"
     ['enable-command-block']="boolean"
     ['allow-flight']="boolean"
     ['level-name']="dash-text"
-    ['level-type']="array"
     ['level-seed']="number"
     ['generator-settings']="none"
     ['max-world-size']="number"
@@ -123,9 +141,21 @@ declare -A ga_ServerPropertiesAllowValues=(
     ['text-filtering-config']="none"
 )
 
-# 1.12 -> 1.16.5 = Java 8
-# 1.17 -> 1.17.1 = Java 16
-# 1.18 = Java 17
+declare -A ga_serverPropertiesAllowValuesList=(
+    ['gamemode']="survival creative adventure spectator"
+    ['difficulty']="peaceful easy normal hard"
+    ['level-type']="minecraft\:normal minecraft\:flat minecraft\:large_biomes minecraft\:single_biome_surface"
+)
+
+# create for each allows values a list of values
+# for key in "${!ga_serverPropertiesAllowValuesList[@]}"; do
+#     local values="${ga_serverPropertiesAllowValuesList[$key]}"
+#     local valuesList=""
+#     for value in $values; do
+#         valuesList="${valuesList} ${value}"
+#     done
+#     ga_serverPropertiesAllowValuesList[$key]="${valuesList}"
+# done
 
 
 
@@ -526,6 +556,13 @@ LoadServerPropertiesFile () {
                 fi
             fi
         done <"$sourceFile"
+
+        for values in "${!ga_serverPropertiesArray[@]}"; do
+            
+        done
+        ga_serverPropertiesArray["$key"]="${value}"
+
+        IFS=$'\n' tmp_array_sorted=($(sort <<<"${tmp_array[*]}")); unset IFS
     fi # endof if file exists
 }
 # @Function : list items of g_versionsList
@@ -718,23 +755,14 @@ StartServer () {
                     StartServer_failed="true"
                 else
                     
-                    printf "${green}Start \"${serverNameDir}\" server${nocolor} (${gray}Memory: ${blue}${memory}${gray})${nocolor}\n"
-                    printf "${orange}/!\ it's better to use this command in a screen session${nocolor}\n"
+                    printf "${gray}Start ${green}\"${serverNameDir}\"${nocolor} (${gray}Memory: ${blue}${memory}${gray})${nocolor}\n"
+                    printf "${orange}${nocolor}\n"
 
                     local jar=$(ls -1 "${serverDir}" | grep ".*\.jar")
 
                     printf "${gray}"
 
-                    # local actualDir=$(pwd)
-                    # cd ${serverDir}
-                    # java -Xmx$memory -Xms$memory -jar "${jar}" nogui
                     StartScreenSession "$1" "$2"
-                    if [ "$StartScreenSession_failed" == "true" ]; then
-                        echo "Job failed"
-                    else 
-                        echo "Job done"
-                    fi
-
                 fi
 
             fi # endof if dir exists
@@ -766,11 +794,11 @@ CheckIfScreenSessionExists () {
     if [ -z "$sessionName" ]; then
         CheckIfScreenSessionExists_failed="true"
 
-        if [ "$g_isVerboseActive" == "true" ]; then
+        if [ "$g_isDoubleVerboseActive" == "true" ]; then
             printf "${red}Checking screen session : sessionName param is empty${nocolor}\n"
         fi
     else
-        if [ "$g_isVerboseActive" == "true" ]; then
+        if [ "$g_isDoubleVerboseActive" == "true" ]; then
             printf "${gray}Start checking session \"${sessionName}\" ...${nocolor}\n"
         fi
 
@@ -784,8 +812,8 @@ CheckIfScreenSessionExists () {
         else
             if [[ "$test" =~ ^(No Sockets found) ]]; then
                 screenSessionExists="false"
-                if [ "$g_isVerboseActive" == "true" ]; then
-                    printf "${yellow}Screen session ${whiite}\"${sessionName}\"${yellow} does not exists${nocolor}\n"
+                if [ "$g_isDoubleVerboseActive" == "true" ]; then
+                    printf "${orange}Screen session ${whiite}\"${sessionName}\"${yellow} does not exists${nocolor}\n"
                 fi
             else
                 screenSessionExists="true"
@@ -834,19 +862,19 @@ StartScreenSession () {
                 else
                     local jar=$(ls -1 "${g_serversDIR}/${serverName}" | grep ".*\.jar")
                     memory="2048M"
-                    echo $jar
 
                     local actualDir=$(pwd)
                     cd "${g_serversDIR}/${serverName}"
                     screen -S "${sessionName}" -dm bash -c "java -Xmx$memory -Xms$memory -jar "${jar}" nogui && exec sh"
+
                     AttachToScreen "${sessionName}"
-                    # screen -S "${sessionName}" -dm bash -c "exec sh"
-                    
                     if [ "$AttachToScreen_failed" == "true" ]; then 
                         printf "${red}Screen failed to attach${nocolor}\n"
                     else
                         printf "${gray}Screen was attached ${green}with success${nocolor}\n"
                     fi
+
+                    # screen -S "${sessionName}" -dm bash -c "exec sh"
                 fi
             fi
         fi
@@ -1009,7 +1037,7 @@ ClearDetachedScreens () {
 #  - cmdScreenDate : (JJ/MM/AAAA HH:MM:SS)
 #  - cmdScreenStatus : (Attached | Detached)
 # @UseCase : 
-#  - GetScreenInfos "toto.1.19.2"
+#  - GetScreenInfos "mcserver.toto.1.19.2"
 #  - if [ "$GetScreenInfos_failed" == "true" ]; then echo "GetScreenInfos failed" else echo "GetScreenInfos done" fi
 GetScreenInfos () {
     GetScreenInfos_failed="false"
@@ -1037,6 +1065,40 @@ GetScreenInfos () {
                 printf "${green}Screen session found${nocolor}\n"
             fi
             
+            IFS=$'\t' read -r -a cmdAarray <<< "$cmd"
+
+            cmdScreenName="${cmdAarray[0]}"
+            cmdScreenName=${cmdScreenName:6}
+
+            cmdScreenDate="${cmdAarray[1]}"
+            cmdScreenDate=$(echo "${cmdScreenDate}" | sed 's/[)(]//g')
+
+            cmdScreenStatus="${cmdAarray[2]}"
+            cmdScreenStatus=$(echo "${cmdScreenStatus}" | sed 's/[)(]//g')
+        fi
+    fi
+}
+
+GetScreenInfoInline () {
+    GetScreenInfos_failed="false"
+    inScreen="false"
+    screenName=$1
+
+    if [ -z "$screenName" ]; then
+        GetScreenInfos_failed="true"
+        inScreen="false"
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${red}ScreenName param empty${nocolor}\n"
+        fi
+    else
+        cmdScreenName=""
+        cmdScreenDate=""
+        cmdScreenStatus=""
+        
+        cmd=$(screen -list | awk -v pat="$screenName" '$0 ~ pat')
+
+        if [ ! -z "$cmd" ]; then
+            inScreen="true"
             IFS=$'\t' read -r -a cmdAarray <<< "$cmd"
 
             cmdScreenName="${cmdAarray[0]}"
@@ -1210,14 +1272,19 @@ InstallCmd () {
             printf "\n"
         fi
 
-        # AskForInstallGlobally
-        # if [ "$installGlobal" == "true" ]; then
-        #     chmod +x srvcraft
-        #     currentDir=$(pwd)
-        #     export PATH=$PATH:$currentDir
-        # fi
+        AskForInstallGlobally
+        if [ "$installGlobal" == "true" ]; then
+            InstallCmdGlobally
+        fi
     done
     ClearDir "$g_tmpInstallDIR"
+}
+
+InstallCmdGlobally () {
+    chmod +x srvcraft
+    currentDir=$(pwd)
+    # export PATH=$PATH:$currentDir
+    sudo ln -s $currentDir/srvcraft /usr/local/bin/srvcraft
 }
 
 
@@ -1298,7 +1365,7 @@ SelectServer () {
             esac
         done
 
-        if [ "$g_isVerboseActive" == "true" ]; then
+        if [ "$g_isDoubleVerboseActive" == "true" ]; then
             printf "${gray}Server selected :${green} ${selectedServer} ${nocolor}\n"
         fi
     fi
@@ -1410,7 +1477,7 @@ AskForMemory () {
 # - if [ "$editWithPrompt" == "true" ]; then "use prompt to edit" echo "" else echo "use nano to edit" fi
 AskForConfigEdition () {
     #colors
-    promptTextColor=$'\033[0;32m'
+    promptTextColor=$'\033[0;1;97m'
     promptTextColor2=$'\033[0;1;97m'
     promptNoColor=$'\033[0m'
     valueColor=$'\033[0;38;5;45m'
@@ -1418,14 +1485,15 @@ AskForConfigEdition () {
     editWithPrompt="true"
     # if [ "$editWithPrompt" == "false" ]; then
     while true; do
-        read -e -p "$promptNoColor Use ${promptTextColor}nano${promptNoColor} edit ${promptTextColor2}server.properties$promptNoColor (y/N) ? ${promptNoColor}" -i "N" editWithPrompt
+        # read -e -p "$promptNoColor Use ${promptTextColor}nano${promptNoColor} edit ${promptTextColor2}server.properties$promptNoColor (y/N) ? ${promptNoColor}" -i "N" editWithPrompt
+        read -e -p "${promptNoColor} Use ${promptTextColor2}Prompt${promptNoColor} or ${promptTextColor2}Nano${promptNoColor} to edit configuration (P/n) ? ${promptNoColor}" -i "p" editWithPrompt
         case $editWithPrompt in
-            [Yy]* ) 
-                editWithPrompt="false"
+            [Pp]* ) 
+                editWithPrompt="true"
                 break
                 ;;
             [Nn]* ) 
-                editWithPrompt="true"
+                editWithPrompt="false"
                 break
                 ;;
             * ) printf "${red}Please answer yes or no.${nocolor}\n";;
@@ -1435,8 +1503,6 @@ AskForConfigEdition () {
 }
 
 # @Function : select server property (used for editing)
-# @Param :
-# - $1 : serverPropertiesArray
 # @Result : vars $selectedProperty available
 # @UseCase : 
 # - SelectProperty $serverPropertiesArray
@@ -1477,6 +1543,72 @@ SelectProperty () {
     fi
 }
 
+# @Function : ask for server property (used for editing)
+# @Result : vars $selectedProperty available
+AskForProperty () {
+    #colors
+    local promptTextColor=$'\033[0;32m'
+    local promptTextColor2=$'\033[0;1;97m'
+    local promptTextColor3=$'\033[0;3;32m'
+    local promptNoColor=$'\033[0m'
+    local valueColor=$'\033[0;38;5;45m'
+    
+    SelectProperty_failed="false"
+    selectedProperty=""
+
+    if [ ${#ga_serverPropertiesArray[@]} -eq 0 ]; then
+        printf "${red}serverPropertiesArray param is empty${nocolor}\n"
+        SelectProperty_failed="true"
+    else
+        local arrayLength=${#ga_serverPropertiesArray[@]}
+        local realArrayLenght=$((arrayLength-1))
+        local tmp_array=()
+        local cpt=0
+        for value in "${!ga_serverPropertiesArray[@]}"; do # for array
+            tmp_array+=("${value}")
+        done
+
+
+        IFS=$'\n' tmp_array_sorted=($(sort <<<"${tmp_array[*]}")); unset IFS
+        # printf "[%s]\n" "${tmp_array_sorted[@]}"
+        local cpt=0
+        for value in "${tmp_array_sorted[@]}"; do # for print
+            printf "${whiite}${cpt} ${graydim}> ${gray}%-8s${nocolor}\n" "${value}"
+            cpt=$((cpt+1))
+        done | column
+
+        while true; do
+            read -e -p "${promptTextColor}Select property ${promptTextColor2}0 - ${realArrayLenght}${promptNoColor} : " propertyIndex
+
+            if [ -z "$propertyIndex" ]; then
+                printf "${red}property index can't be empty${nocolor}\n"
+                continue
+            fi
+
+            if ! [[ "$propertyIndex" =~ ^[0-9]+$ ]]; then # ^([0-9]+)[MG]$
+                printf "${red}Index must be a number${nocolor}\n"
+                continue
+            fi
+
+            if (( $propertyIndex < 0 || $propertyIndex >= $realArrayLenght )); then
+                printf "${red}Index must be in range ${white}(1 - $realArrayLenght)${nocolor}\n"
+                continue
+            fi
+
+            selectedProperty="${tmp_array_sorted[$propertyIndex]}"
+            break
+        done
+
+        if [ -z "$selectedProperty" ]; then
+            SelectProperty_failed="true"
+        else
+            if [ "$g_isVerboseActive" == "true" ] ; then
+                printf "${gray}Selected property :${green} ${selectedProperty} ${nocolor}\n"
+            fi
+        fi
+    fi
+}
+
 # @Function : Ask for value to assign to the property passed in param
 # @Param : property name
 # @Result : vars $propertyValue available
@@ -1495,11 +1627,12 @@ AskForPropertyValue () {
             printf "${red}property param is empty${nocolor} "
         fi
     else
-        propertyValueType=${ga_ServerPropertiesAllowValues[$property]}
+        propertyValueType=${ga_serverPropertiesAllowValues[$property]}
         case $propertyValueType in
             boolean)
+                printf "${gray}Actual value is :${whiite} ${ga_serverPropertiesArray[$property]} ${nocolor}\n"
                 printf "${gray}"
-                PS3='Select: '
+                PS3='Select new value : '
                 selectOpts=("true" "false")
                 select opt in "${selectOpts[@]}"
                 do
@@ -1525,11 +1658,13 @@ AskForPropertyValue () {
             ;;
 
             number)
+                promptTextColor=$'\033[0;32m'
+                promptNoColor=$'\033[0m'
+                valueColor=$'\033[0;38;5;45m'
+
+                printf "${gray}Actual value is :${valueColor} ${ga_serverPropertiesArray[$property]} ${nocolor}\n"
                 while true; do
-                    promptTextColor=$'\033[0;32m'
-                    promptNoColor=$'\033[0m'
-                    valueColor=$'\033[0;38;5;45m'
-                    read -e -p "$promptNoColor Choose a numeric value for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
+                    read -e -p "${promptNoColor}Select new numeric value : ${valueColor}" propertyValue
                     printf "${nocolor}"
 
                     if [ -z "$propertyValue" ]; then
@@ -1547,11 +1682,13 @@ AskForPropertyValue () {
             ;;
 
             text)
+                promptTextColor=$'\033[0;32m'
+                promptNoColor=$'\033[0m'
+                valueColor=$'\033[0;38;5;201m'
+
+                printf "${gray}Actual value is :${valueColor} ${ga_serverPropertiesArray[$property]} ${nocolor}\n"
                 while true; do
-                    promptTextColor=$'\033[0;32m'
-                    promptNoColor=$'\033[0m'
-                    valueColor=$'\033[0;38;5;201m'
-                    read -e -p "$promptNoColor Type some text for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
+                    read -e -p read -e -p "${promptNoColor}Select new text value : ${valueColor}" propertyValue
 
                     if [ -z "$propertyValue" ]; then
                         printf "${red}Value can't be empty${nocolor}\n"
@@ -1562,11 +1699,13 @@ AskForPropertyValue () {
             ;;
 
             dash-text)
+                promptTextColor=$'\033[0;32m'
+                promptNoColor=$'\033[0m'
+                valueColor=$'\033[0;95m'
+
+                printf "${gray}Actual value is :${valueColor} ${ga_serverPropertiesArray[$property]} ${nocolor}\n"
                 while true; do
-                    promptTextColor=$'\033[0;32m'
-                    promptNoColor=$'\033[0m'
-                    valueColor=$'\033[0;95m'
-                    read -e -p "$promptNoColor Type some text without space for property ${promptTextColor}${property}${promptNoColor} : ${valueColor}" propertyValue
+                    read -e -p read -e -p "${promptNoColor}Select new text (without space) value : ${valueColor}" propertyValue
 
                     if [ -z "$propertyValue" ]; then
                         printf "${red}Value can't be empty${nocolor}\n"
@@ -1579,13 +1718,13 @@ AskForPropertyValue () {
             ;;
             
             array)
-                propertyValuesAsString=${ga_loaderServerProperties[$property]}
+                printf "${gray}Actual value is :${green} ${ga_serverPropertiesArray[$property]} ${nocolor}\n"
+
+                propertyValuesAsString=${ga_serverPropertiesAllowValuesList[$property]}
                 IFS=' ' read -ra propertyValuesAsArray <<< "$propertyValuesAsString"
 
-                printf "${graybold}availables values for ${property}\n${nocolor}"
-
                 printf "${gray}"
-                PS3='Select value in the list : '
+                PS3='Select new value in the list : '
                 select opt in "${propertyValuesAsArray[@]}"; do
                     case "$opt" in
                         "") continue ;;
@@ -1618,15 +1757,15 @@ AskForPropertyValue () {
 # - AskForServOrScreen
 # - if [ "$useScreen" == "true" ]; then echo "list screens" else echo "list directories" fi
 AskForServOrScreen () {
-        #colors
-    promptTextColor=$'\033[0;32m'
-    promptTextColor2=$'\033[0;1;97m'
-    promptNoColor=$'\033[0m'
-    valueColor=$'\033[0;38;5;45m'
+    #colors
+    local promptTextColor=$'\033[0;32m'
+    local promptTextColor2=$'\033[0;1;97m'
+    local promptNoColor=$'\033[0m'
+    local valueColor=$'\033[0;38;5;45m'
     
     useScreen="true"
     while true; do
-        read -e -p "${promptNoColor}Use ${promptTextColor}directories${promptNoColor} or ${promptTextColor}screens${promptNoColor} (d/s) ? ${promptNoColor}" -i "S" dirOrScreen
+        read -e -p "${promptNoColor}Use ${promptTextColor}Directories${promptNoColor} or ${promptTextColor}Screens${promptNoColor} (D/s) ? ${promptNoColor}" -i "d" dirOrScreen
         case $dirOrScreen in
             [Ss]* ) 
                 useScreen="true"
@@ -1644,31 +1783,63 @@ AskForServOrScreen () {
 
 
 
+
+listServerScreen () {
+    dirs=($g_serversDIR/*)
+
+    for dir in "${dirs[@]}"; do
+        if [ -d "$dir" ]; then
+            dirbasename="$(basename -- $dir)"
+            GetScreenInfoInline "mcserver.${dirbasename}"
+            printf "${gray}$dirbasename${nocolor}\n"
+            if [ "$inScreen" == "true" ]; then
+                if [ "$cmdScreenStatus" == "Attached" ]; then
+                  screenStatusColored="${green}attached${nocolor}"  
+                elif [ "$cmdScreenStatus" == "Detached" ]; then
+                    screenStatusColored="${yellow}detached${nocolor}"
+                else
+                    screenStatusColored="${blue}[ status not identified ]${nocolor}"
+                fi
+                screenStatusText="${gray}running ${screenStatusColored}${nocolor}"
+
+                printf "${graydim}  Screen ${whiite}\"$cmdScreenName\" ${graydim}is ${screenStatusText} ${graydim}since ${gray}\"$cmdScreenDate\"${nocolor}\n"
+            else
+                printf "${graydim}  No screen found${nocolor}\n"
+            fi
+        fi
+    done
+}
+
+
+
+
 ##############
 ## COMMANDS ##
 ##############
 
 cmd_ListAllServers () {
-    if [ ! -d "$g_serversDIR" ]; then
-        printf "${orange} Directory $g_serversDIR not exists\n${nocolor}"
-        CreateDir "$g_serversDIR"
-    else
-        AskForServOrScreen
-        if [ "$useScreen" == "true" ]; then
-            ListScreenSessions
-        else
-            nb="$(ls "$g_serversDIR/" | wc -l)"
-            if [ $nb -gt 0 ]; then
-                printf "${green}  Minecraft servers :${whiite} ${nb} ${orange}(TODO: show running)${nocolor}\n"
-                printf "${gray}"
-                ls -ACDtu1 $g_serversDIR
-                printf "${nocolor}"
-            else
-                printf "${yellow}  No minecraft servers\n${nocolor}"
-                printf "${yellow}Use ${gray}${commandName} --create ${gray}to create one\n${nocolor}"
-            fi
-        fi
-    fi
+
+    listServerScreen
+    # if [ ! -d "$g_serversDIR" ]; then
+    #     printf "${orange} Directory $g_serversDIR not exists\n${nocolor}"
+    #     CreateDir "$g_serversDIR"
+    # else
+    #     AskForServOrScreen
+    #     if [ "$useScreen" == "true" ]; then
+    #         ListScreenSessions
+    #     else
+    #         nb="$(ls "$g_serversDIR/" | wc -l)"
+    #         if [ $nb -gt 0 ]; then
+    #             printf "${green}  Minecraft servers :${whiite} ${nb} ${orange}(TODO: show running)${nocolor}\n"
+    #             printf "${gray}"
+    #             ls -ACDtu1 $g_serversDIR
+    #             printf "${nocolor}"
+    #         else
+    #             printf "${yellow}  No minecraft servers\n${nocolor}"
+    #             printf "${yellow}Use ${gray}${commandName} --create ${gray}to create one\n${nocolor}"
+    #         fi
+    #     fi
+    # fi
 }
 
 cmd_ClearAllServers () {
@@ -1762,11 +1933,6 @@ cmd_StartServer () {
         local memory=$memorySelected
 
         StartServer "${selectedServer}" "${memory}"
-        if [ "$StartServer_failed" == "true" ]; then
-            echo "Job failed"
-        else
-            echo "Job done"
-        fi
     fi
 }
 
@@ -1785,15 +1951,17 @@ cmd_ConfigServer () {
             # if [ "$LoadServerPropertiesFile_status" == "true" ]; then
             #     printf "${red}LoadServerPropertiesFile failed${nocolor}\n"
             # else
-                AskForConfigEdition
-                if [ "$editWithPrompt" == "true" ]; then 
-                    printf "${graydim}Using ${gray}prompt${graydim} to edit ...${nocolor}\n"
+                # AskForConfigEdition
+                # if [ "$editWithPrompt" == "true" ]; then 
+
+                    printf "${whiite}Edit ${whiitebold}${selectedServer} ${gray}server.properties${nocolor}\n"
 
                     LoadServerPropertiesFile "$propertyFile"
                     if [ "$LoadServerPropertiesFile_status" == "true" ]; then
                         printf "${red}LoadServerPropertiesFile failed${nocolor}\n"
                     else
-                        SelectProperty
+                        # SelectProperty
+                        AskForProperty
                         if [ "$SelectProperty_failed" == "true" ]; then
                             printf "${red}Property empty${nocolor}\n"
                         else
@@ -1801,22 +1969,28 @@ cmd_ConfigServer () {
                             if [ "$AskForPropertyValue_failed" == "true" ]; then
                                 printf "${red}Property can't be edited${nocolor}\n"
                             else
-                                ga_serverPropertiesArray["${selectedProperty}"]="$propertyValue"
 
-                                ## update file
-                                UpdateServerPropertiesFile "${g_serversDIR}/${selectedServer}/server.properties"
-                                if [ "$updateServerPropertiesFile_failed" == "true" ]; then
-                                    echo "server.properties file not found"
-                                else 
-                                    printf "${gray}property ${whiite}$selectedProperty ${gray}update with value ${blue}${propertyValue} ${graydim}(in ${selectedServer}/server.properties) ${nocolor}\n"
-                                    printf "${gray}Use ${whiite} ${commandName}--start ${gray}to start the server with the ${green}new config params${nocolor}\n"
+                                if [[ -z $selectedProperty || -z $propertyValue ]]; then
+                                    printf "${red}var that define array are empty${nocolor}\n"
+                                else
+                                    ga_serverPropertiesArray["${selectedProperty}"]="$propertyValue"
+
+                                    ## update file
+                                    UpdateServerPropertiesFile "${g_serversDIR}/${selectedServer}/server.properties"
+                                    if [ "$updateServerPropertiesFile_failed" == "true" ]; then
+                                        echo "server.properties file not found"
+                                    else 
+                                        printf "${gray}property ${green}$selectedProperty ${gray}update with value ${whiite}${propertyValue}${nocolor}\n"
+                                        printf "${graydim}Use ${gray}${commandName} --start ${graydim}to start the server${nocolor}\n"
+                                    fi
                                 fi
                             fi
                         fi
                     fi
-                else
-                    printf "${graydim}use ${gray}nano${graydim} to edit${nocolor}\n"
-                fi
+                # else
+                #     printf "${graydim}use ${gray}nano${graydim} to edit${nocolor}\n"
+                #     nano "${g_serversDIR}/${selectedServer}/server.properties"
+                # fi
             # fi
         fi
     fi
@@ -1832,14 +2006,6 @@ cmd_ConfigServer () {
 StartText () {
     printf "\n${blue}This script is made for generate a READY-TO-USE minecraft server.
 Follow the next steps to deploy your server !${nocolor}\n"
-HelperScreenIssue
-}
-HelperScreenIssue () {
-    printf "${yellow}  /!\ Be careful ! /!\ \n"
-    printf "this command launch server console directly on this command prompt.\n"
-    printf "A future evolution is to put the command that start the server into a screen session${nocolor}\n"
-    # printf "${red}Screen is not installed. Please install it with : ${gray}sudo apt install screen${nocolor}\n"
-    # screen -S session_name
 }
 HowToUse () {
     printf "${gray}
@@ -1853,7 +2019,8 @@ ${commandName} [ -i | --install : download and install command ]
        [ --remove       : choose a server to remove ]
        [ --clear        : clear all the instances (ls ${g_serversDIR}) ]
        [ -h | --help    : show this message ]
-${graydim}See https://github.com/alexiscotel/minecraftserver_command/README.md for more explainations${nocolor}\n"
+${graydim}See README.md for more explainations${nocolor}\n
+"
 }
 
 #####
@@ -1909,7 +2076,6 @@ while true; do
     -s | --start)
         CheckCmdInstalled
         if [ "$CheckIfCmdInstall" == "true" ]; then
-            HelperScreenIssue
             printf "\n"
             cmd_StartServer
         else
