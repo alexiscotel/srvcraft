@@ -2,15 +2,15 @@
 
 Simple steps to deploy minecraft server on linux machine. This instructions are sets in order to run minecraft server 1.19.3, with java 17
 
-## Start by install linux environement
-follow this documentations:
-- [linux installation](./docs/linux-install.md) (docs/linux-install.md)
-- [minecraft installation](./docs/minecraft-install.md) (docs/minecraft-install.md)
+## Summary of docs
+- [Linux configuration](./docs/linux-config.md) (docs/linux-config.md)
+- [Prettier shell](./docs/prettier-shell.md) (docs/prettier-shell.md)
+- [Minecraft server basic installation](./docs/basic-minecraftserver-install.md) (docs/basic-minecraftserver-install.md)
 
 ## Usage of commands
 There is a main command `bash srvcraft` used to manage severals actions on server instances. First argument is required. There is the list :
 
-| Commands        | How to use           |
+| Commands | How to use |
 | :--- |:---|
 | [Install](#install-the-command)| `srvcraft --install` |
 | [Check install](#check-the-installation) | `srvcraft --checkInstall` |

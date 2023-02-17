@@ -1,6 +1,6 @@
 # Minecraft server preparation
 
-this guide is based on the server.1.19.3.jar file from Mojang
+this guide is based on the server.1.19.3.jar file from Mojang. Is work same with others versions.
 
 ## get files form minecraft server
 
@@ -33,7 +33,6 @@ start in separate shell (not mandatory)
 screen -S "Minecraft server"
 `
 
-use the ``start`` script. optional param : memory size (ex : 1024M, 4G)
 start the server
 `
 java -Xmx1024M -Xms1024M -jar server.1.19.3.jar nogui

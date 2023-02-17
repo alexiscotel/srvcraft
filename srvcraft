@@ -161,9 +161,9 @@ declare -A ga_serverPropertiesAllowValuesList=(
 
 
 
-####################
-## DOWNLOAD FUNCTONS
-####################
+########################
+## DOWNLOAD FUNCTIONS ##
+########################
 
 # @Function : List all lines from a directory with regex filter (arg 2)
 # @Params
@@ -1321,11 +1321,11 @@ InstallGlobal () {
     printf "${gray}Creating symlink ${graydim}($currentDir/$commandName => $symLink)${nocolor}\n"
     sudo ln -s $currentDir/$commandName $symLink
 
-    printf "${gray}Update bashrc file ...${nocolor}\n"
-    echo '# add home/bin to PATH var
-export PATH="$HOME/bin:$PATH"' >> $bashrc
-    printf "${graydim}Try to restart ~/.bashrc${nocolor}\n"
-    source $bashrc
+#     printf "${gray}Update bashrc file ...${nocolor}\n"
+#     echo '# add home/bin to PATH var
+# export PATH="$HOME/bin:$PATH"' >> $bashrc
+#     printf "${graydim}Try to restart ~/.bashrc${nocolor}\n"
+#     source $bashrc
     printf "${gray}To be sure command is available, restart the user session ${graydim}(exit from ssh for example)${nocolor}\n"
 }
 
@@ -1821,10 +1821,6 @@ AskForServOrScreen () {
         esac
     done
 }
-
-
-
-
 
 listServerScreen () {
     dirs=($g_serversDIR/*)

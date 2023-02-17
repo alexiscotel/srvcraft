@@ -1,0 +1,177 @@
+#!/bin/bash
+
+####################
+## Minecraft Server Command
+## Author : Alexis Cotel
+## Version : 1.0.0
+## License : MIT
+## See https://github.com/alexiscotel/minecraftserver_command/README.md for more explainations
+####################
+
+commandPath=$0
+commandName=`basename "$commandPath"`
+
+############
+## COLORS ##
+############
+nocolor='\033[0m'
+whiite='\033[0;97m'
+whiitebold='\033[0;1;97m'
+purple='\033[0;38;5;201m'
+blue='\033[0;38;5;45m'
+blueblink='\033[0;5;38;5;45m'
+darkblue='\033[0;38;5;27m'
+green='\033[0;32m'
+greendim='\033[0;3;32m'
+yellow='\033[0;38;5;178m'
+orange='\e[0;3;38;5;166m'
+gray='\033[0;38;5;249m'
+graybold='\033[0;1;38;5;249m'
+graydim='\033[0;2;38;5;250m'
+red='\033[0;91m'
+## CUSTOM
+c__functionName='\033[0;38;5;45m'
+c__listHeader='\033[0;97m'
+c__listLine='\033[0;38;5;249m'
+
+
+
+echo "Welcome to the script to install a new server"
+echo "This script will install the following packages:"
+echo " - software-properties-common (for debian-based distrib)"
+echo " - sudo"
+echo " - default-jdk"
+echo " - oracle-java17-installer"
+echo " - screen"
+
+# ask for confirmation
+read -p "Do you want to continue? (y/n) " confirmation
+if [ $confirmation != "y" ]; then
+    exit
+fi
+
+# install sudo
+echo "Installing sudo..."
+apt install sudo
+
+# connect as root
+echo "Connecting as root..."
+su -
+echo "
+
+# Rewrite of PS1 prompt (linux-install.md) ROOT mode
+parse_git_branch() {
+     git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1) /'
+}
+PS1='\[\e[0;38;5;251m\]\A\[\e[0m\] \[\e[0;1;5;38;5;160m\]\u\[\e[0;1m\]@\[\e[0;1;38;5;34m\]\H\[\e[0m\] \[\e[0;38;5;190m\]\w\[\e[0m\] \[\e[0;3;38;5;45m\]$(parse_git_branch)\[\e[0m\]'
+" >> ~/.bashrc
+
+# create ext/int group
+echo "Creating groups..."
+groupadd internal
+groupadd external
+
+# check if distrib is debian-based bash
+echo "Checking distrib..."
+if [ -f "/etc/debian_version" ]; then
+   apt install software-properties-common
+fi
+
+echo "Creating users..."
+# ask for number of users to create
+read -p "How many users do you want to create? " number
+
+# create as many users as asked
+loopNumber=$(($number - 1))
+for ((i=0; i <= $loopNumber; i++))
+do
+    read -p "Enter username: " username
+    adduser $username
+
+    # ask for add user in sudo group
+    read -p "Do you want to add user in sudo group? (y/n) " sudo
+    if [ $sudo == "y" ]; then
+        if [ -f "/etc/debian_version" ]; then
+            usermod -aG sudo $username
+        else
+            addgroup $username sudo
+        fi
+    fi
+
+    # ask for add user in adm group
+    read -p "Do you want to add user in adm group? (y/n) " adm
+    if [ $adm == "y" ]; then
+        if [ -f "/etc/debian_version" ]; then
+            usermod -aG adm $username
+        else
+            addgroup $username adm
+        fi
+    fi
+
+    # ask for add user in ssh group or internal group
+    read -p "Do you want to add user in ssh group? (y/n) " ssh
+    if [ $ssh == "y" ]; then
+        if [ -f "/etc/debian_version" ]; then
+            usermod -aG ssh $username
+        else
+            addgroup $username ssh
+        fi
+        PS1='\[\e[0;2;38;5;251m\]\A\[\e[0m\] \[\e[0;3;38;5;33m\]\u\[\e[0;1m\]@\[\e[0;1;38;5;34m\]\H\[\e[0m\] \[\e[0;38;5;190m\]\w\[\e[0m\] \[\e[0;3;38;5;45m\]$(parse_git_branch)\[\e[0m\]'
+    else
+        if [ -f "/etc/debian_version" ]; then
+            usermod -aG internal $username
+        else
+            addgroup $username internal
+        fi
+        PS1='\[\e[0;2;38;5;251m\]\A\[\e[0m\] \[\e[0;38;5;178m\]\u\[\e[0;1m\]@\[\e[0;1;38;5;34m\]\H\[\e[0m\] \[\e[0;38;5;184m\]\w\[\e[0m\] \[\e[0;3;38;5;45m\]$(parse_git_branch)\[\e[0m\]'
+    fi
+
+    # connect to user
+    su - $username
+
+    # edit bashrc
+    echo "Editing bashrc..."
+
+    echo "
+
+# External User
+parse_git_branch() {
+     git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1) /'
+}
+$PS1
+" >> ~/.bashrc
+done
+
+echo "Installing java..."
+# Start by install default jdk
+sudo apt update
+echo "Installing default-jdk..."
+sudo apt install default-jdk
+java -version
+
+if [ -f "/etc/debian_version" ]; then
+    # add key to query to ubuntu server
+    echo "Adding key to query to ubuntu server..."
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys  C2518248EEA14886
+fi
+
+# add repository
+echo "Adding repository..."
+sudo add-apt-repository ppa:linuxuprising/java
+sudo apt update
+
+# install java 17
+echo "Installing oracle-java17-installer..."
+sudo apt install oracle-java17-installer
+
+echo "Setting java 17 as default..."
+# set as default
+sudo apt install oracle-java17-set-default
+java -version
+cat /etc/profile.d/jdk.sh
+
+echo "Installing screen..."
+# install screen
+sudo apt install screen
+
+echo "Configuration done!"
