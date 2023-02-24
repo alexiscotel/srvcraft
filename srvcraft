@@ -63,7 +63,7 @@ g_tmpInstallDIR="./tmp"
 g_serversDIR="./instances"
 g_loaderDIR="./loader"
 g_downloadDIR="${g_loaderDIR}/downloads"
-g_saveDIR="./saves"
+g_savesDIR="./saves"
 
 g_screenPrefix="mcserver"
 
@@ -1292,7 +1292,7 @@ InstallCmd () {
     done
     ClearDir "$g_tmpInstallDIR"
 
-    CreateDir "$g_saveDIR"
+    CreateDir "$g_savesDIR"
 
     AskForInstallGlobally
     if [ "$installGlobal" == "true" ]; then
@@ -2046,7 +2046,7 @@ cmd_SaveServer () {
         echo "server selected : $selectedServer"
 
         # create zip of folder $selectedServer
-        zip -r "${g_saveDIR}/${selectedServer}.zip" "${g_serversDIR}/${selectedServer}"
+        zip -r "${g_savesDIR}/${selectedServer}.zip" "${g_serversDIR}/${selectedServer}"
 
     fi
 }
