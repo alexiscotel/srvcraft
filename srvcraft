@@ -2207,7 +2207,7 @@ if [ "$g_isJavaInstalled" == "false" ]; then
     exit 0;
 fi
 
-ntfy_sendNotification "Utilisation de srvcraft" "la commande srvcraft est utilisée" "normal" "loudspeaker"
+ntfy_sendNotification "Utilisation de srvcraft" "la commande srvcraft est utilisée" default loudspeaker
 
 options=$(getopt -a -n ${commandName} -o ilh --long install,checkInstall,setGlobal,create,config,list,start,save,connect,remove,clear,help -- "$@")
 [ $? -eq 0 ] || { 
