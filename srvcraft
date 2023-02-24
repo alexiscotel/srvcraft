@@ -63,6 +63,7 @@ g_tmpInstallDIR="./tmp"
 g_serversDIR="./instances"
 g_loaderDIR="./loader"
 g_downloadDIR="${g_loaderDIR}/downloads"
+g_saveDIR="./saves"
 
 g_screenPrefix="mcserver"
 
@@ -1291,6 +1292,8 @@ InstallCmd () {
     done
     ClearDir "$g_tmpInstallDIR"
 
+    CreateDir "$g_saveDIR"
+
     AskForInstallGlobally
     if [ "$installGlobal" == "true" ]; then
         InstallCmdGlobally
@@ -2034,6 +2037,19 @@ cmd_ConfigServer () {
     fi
 }
 
+cmd_SaveServer () {
+    printf "${green}Choose a server to save :${nocolor}\n"
+    SelectServer 
+    if [ "$SelectServer_failed" == "true" ]; then
+        echo "server not found"
+    else
+        echo "server selected : $selectedServer"
+
+        # create zip of folder $selectedServer
+        zip -r "${g_saveDIR}/${selectedServer}.zip" "${g_serversDIR}/${selectedServer}"
+
+    fi
+}
 
 
 
@@ -2053,7 +2069,8 @@ ${commandName} [ -i | --install : download and install command ]
        [ --create       : create a server ]
        [ --config       : config a server ]
        [ -l | --list    : list all servers ]
-       [ -s | --start   : start a server ]
+       [ --start        : start a server ]
+       [ --save         : save a server ]
        [ --connect      : connect to a server ]
        [ --remove       : choose a server to remove ]
        [ --clear        : clear all the instances (ls ${g_serversDIR}) ]
@@ -2070,7 +2087,7 @@ if [ "$g_isJavaInstalled" == "false" ]; then
     exit 0;
 fi
 
-options=$(getopt -a -n ${commandName} -o ilsh --long install,checkInstall,setGlobal,create,config,list,start,connect,remove,clear,help -- "$@")
+options=$(getopt -a -n ${commandName} -o ilh --long install,checkInstall,setGlobal,create,config,list,start,save,connect,remove,clear,help -- "$@")
 [ $? -eq 0 ] || { 
     printf "${red}Incorrect options provided${nocolor}\n"
     exit 1
@@ -2116,7 +2133,7 @@ while true; do
         cmd_ListAllServers
         break
         ;;
-    -s | --start)
+    --start)
         CheckCmdInstalled
         if [ "$CheckIfCmdInstall" == "true" ]; then
             printf "\n"
@@ -2124,6 +2141,10 @@ while true; do
         else
             printf "${red}No install found. use ${gray}${commandName} --install${nocolor} ${nocolor}\n"
         fi
+        break
+        ;;
+    --save)
+        cmd_SaveServer
         break
         ;;
     --connect)
