@@ -2047,7 +2047,7 @@ cmd_SaveServer () {
 
         # check if "${g_savesDIR}/${selectedServer}.zip" file exists
         if [ -f "${g_savesDIR}/${selectedServer}.zip" ]; then
-            printf "${orange}A save file already exists for this server${nocolor}\n"
+            printf "${yellow}A save file already exists for this server${nocolor}\n"
 
             # ask for overwrite the file
             read -e -p "${promptTextColor}Override existing save ? (y/n)${promptNoColor} : " overwrite
@@ -2063,7 +2063,7 @@ cmd_SaveServer () {
                     printf "${red}Save file not created${nocolor}\n"
                 fi
             else
-                printf "${gray}Save file not overwritten${nocolor}\n"
+                printf "${orange}Save was canceled${nocolor}\n"
             fi
         else
             # create zip of folder $selectedServer
