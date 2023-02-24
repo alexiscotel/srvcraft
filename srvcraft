@@ -2086,7 +2086,7 @@ cmd_SaveServer () {
 ## NTFY COMMANDS ##
 ###################
 ntfy_checkIfInstalled () {
-    if [ -x "$(command -v ntfy)" ]; then
+    if hash ntfy 2>/dev/null; then
         g_ntfy="true"
     else
         g_ntfy="false"
