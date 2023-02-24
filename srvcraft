@@ -1349,6 +1349,8 @@ AskForInstall () {
             case $yn in
                 [Yy]* ) 
                     InstallCmd
+
+                    ntfy_installation
                     break
                 ;;
                 [Nn]* ) exit;;
@@ -2085,6 +2087,71 @@ cmd_SaveServer () {
 ###################
 ## NTFY COMMANDS ##
 ###################
+ntfy_installation () {
+    ntfy_checkIfInstalled
+    if [ "$g_ntfy" == "true" ]; then
+        printf "${gray}ntfy is already installed${nocolor}\n"
+    else
+        # ask for install ntfy package
+        read -p "Do you want to install ntfy package? (y/n) " ntfy
+        if [ $ntfy == "y" ]; then
+            echo "Installing ntfy..."
+            
+            sudo mkdir -p /etc/apt/keyrings
+            curl -fsSL https://archive.heckel.io/apt/pubkey.txt | sudo gpg --dearmor -o /etc/apt/keyrings/archive.heckel.io.gpg
+            sudo apt install apt-transport-https
+            sudo sh -c "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/archive.heckel.io.gpg] https://archive.heckel.io/apt debian main' \
+                > /etc/apt/sources.list.d/archive.heckel.io.list"  
+            sudo apt update
+            sudo apt install ntfy
+            sudo systemctl enable ntfy
+
+            echo "ntfy installed ! (it will start automaticly, you can disable it with 'sudo systemctl disable ntfy')"
+            echo "if you need to start it, use 'ntfy serve'"
+            
+            #ask for configure ntfy
+            read -p "Do you want to configure ntfy? (y/n) " ntfyConfig
+            # copy ntfy config file
+            if [ $ntfyConfig == "y" ]; then
+                echo "save default ntfy config file..."
+                mv /etc/ntfy/server.yml /etc/ntfy/server.yml.bak
+                # create /etc/ntfy/server.yml file and write content in it
+                echo "Creating /etc/ntfy/server.yml file..."
+                echo 'base-url: "https://ntfy.sh"
+listen-http: ":88"
+cache-file: "/var/cache/ntfy/cache.db"
+#attachment-cache-dir: "/var/cache/ntfy/attachments"
+keepalive-interval: "45s"' > /etc/ntfy/server.yml
+
+                cat /etc/ntfy/server.yml
+                echo "ntfy config file created !"
+                ntfy publish --title "Ntfy was installed !" --tags heavy_check_mark --priority urgent ${notifyTAG} "Ntfy was successfully installed on your server ! 🎉"
+
+
+                #ask for notify when user connect throught ssh
+                read -p "Do you want to be notified when a user connect throught ssh? (y/n) " notifyUserConnect
+                if [ $notifyUserConnect == "y" ]; then
+                    # create /etc/check-user-connect file
+                    echo "Creating /etc/check-user-connect file..."
+                    touch /etc/check-user-connect
+                    echo '#!/bin/bash
+userInfos=$(last -n 1)
+IFS=" " read -ra userInfosAsArray <<< "$userInfos"
+ntfy publish --title "$(hostname) ssh connexion" --tags unlock --priority high ${notifyTAG} "${userInfosAsArray[0]} vient de se connecter à $(hostname)"' >> /etc/check-user-connect
+
+                    # update /etc/profile with content
+                    echo "Updating /etc/profile..."
+                    echo '
+/bin/bash /etc/check-user-connect &> /dev/null' >> /etc/profile
+                fi
+
+
+            fi
+        fi
+    fi
+}
+
+
 ntfy_checkIfInstalled () {
     if hash ntfy 2>/dev/null; then
         g_ntfy="true"
