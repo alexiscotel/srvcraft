@@ -2050,7 +2050,7 @@ cmd_SaveServer () {
             printf "${orange}A save file already exists for this server${nocolor}\n"
 
             # ask for overwrite the file
-            read -e -p "${promptTextColor}Override existing save ? (Y/n)${promptNoColor} : " overwrite
+            read -e -p "${promptTextColor}Override existing save ? (y/n)${promptNoColor} : " overwrite
             if [ "$overwrite" == "y" ]; then
                 printf "${gray}Overwrite save file${nocolor}\n"
                 # create zip of folder $selectedServer
