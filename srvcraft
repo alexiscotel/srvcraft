@@ -67,6 +67,8 @@ g_savesDIR="./saves"
 
 g_screenPrefix="mcserver"
 
+g_notifyTAG="coloc_srvcraft"
+
 ## PRINT
 g_isVerboseActive="true"
 g_isDoubleVerboseActive="false"
@@ -2080,11 +2082,33 @@ cmd_SaveServer () {
     fi
 }
 
+###################
+## NTFY COMMANDS ##
+###################
+ntfy_checkIfInstalled () {
+    if [ -x "$(command -v ntfy)" ]; then
+        g_ntfy="true"
+    else
+        g_ntfy="false"
+    fi
+}
+
+ntfy_sendNotification () {
+    ntfy_checkIfInstalled
+    if [ "$g_ntfy" == "true" ]; then
+        ntfy_title=$1
+        ntfy_content=$2
+        ntfy_priority=$3
+        ntfy_tag=$4
+
+        ntfy publish --title "${ntfy_title}" --tags ${ntfy_tag} --priority ${ntfy_priority} ${g_notifyTAG} "${ntfy_content}"
+    fi
+}
 
 
-##########
+#############
 ## HELPERS ##
-##########
+#############
 
 StartText () {
     printf "\n${blue}This script is made for generate a READY-TO-USE minecraft server.
@@ -2115,6 +2139,8 @@ CheckForJavaInstall
 if [ "$g_isJavaInstalled" == "false" ]; then
     exit 0;
 fi
+
+ntfy_sendNotification "Utilisation de srvcraft" "la commande srvcraft est utilisée" "normal" "loudspeaker"
 
 options=$(getopt -a -n ${commandName} -o ilh --long install,checkInstall,setGlobal,create,config,list,start,save,connect,remove,clear,help -- "$@")
 [ $? -eq 0 ] || { 

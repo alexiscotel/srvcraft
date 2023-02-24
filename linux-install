@@ -11,6 +11,9 @@
 commandPath=$0
 commandName=`basename "$commandPath"`
 
+
+notifyTAG="coloc_SRV-DEB"
+
 ############
 ## COLORS ##
 ############
@@ -218,6 +221,26 @@ keepalive-interval: "45s"' > /etc/ntfy/server.yml
 
         cat /etc/ntfy/server.yml
         echo "ntfy config file created !"
-        ntfy publish --title "Ntfy was installed !" --tags heavy_check_mark --priority urgent coloc "Ntfy was successfully installed on your server ! 🎉"
+        ntfy publish --title "Ntfy was installed !" --tags heavy_check_mark --priority urgent ${notifyTAG} "Ntfy was successfully installed on your server ! 🎉"
+
+
+        #ask for notify when user connect throught ssh
+        read -p "Do you want to be notified when a user connect throught ssh? (y/n) " notifyUserConnect
+        if [ $notifyUserConnect == "y" ]; then
+            # create /etc/check-user-connect file
+            echo "Creating /etc/check-user-connect file..."
+            touch /etc/check-user-connect
+            echo '#!/bin/bash
+userInfos=$(last -n 1)
+IFS=" " read -ra userInfosAsArray <<< "$userInfos"
+ntfy publish --title "$(hostname) ssh connexion" --tags unlock --priority high ${notifyTAG} "${userInfosAsArray[0]} vient de se connecter à $(hostname)"' >> /etc/check-user-connect
+
+            # update /etc/profile with content
+            echo "Updating /etc/profile..."
+            echo '
+            /bin/bash /etc/check-user-connect &> /dev/null' >> /etc/profile
+        fi
+
+
     fi
 fi
