@@ -1733,7 +1733,7 @@ AskForPropertyValue () {
 
                 printf "${gray}Actual value is :${valueColor} ${ga_serverPropertiesArray[$property]} ${nocolor}\n"
                 while true; do
-                    read -e -p read -e -p "${promptNoColor}Select new text value : ${valueColor}" propertyValue
+                    read -e -p "${promptNoColor}Select new text value : ${valueColor}" propertyValue
 
                     if [ -z "$propertyValue" ]; then
                         printf "${red}Value can't be empty${nocolor}\n"
@@ -1750,7 +1750,7 @@ AskForPropertyValue () {
 
                 printf "${gray}Actual value is :${valueColor} ${ga_serverPropertiesArray[$property]} ${nocolor}\n"
                 while true; do
-                    read -e -p read -e -p "${promptNoColor}Select new text (without space) value : ${valueColor}" propertyValue
+                    read -e -p "${promptNoColor}Select new text (without space) value : ${valueColor}" propertyValue
 
                     if [ -z "$propertyValue" ]; then
                         printf "${red}Value can't be empty${nocolor}\n"
@@ -2045,8 +2045,23 @@ cmd_SaveServer () {
     else
         echo "server selected : $selectedServer"
 
-        # create zip of folder $selectedServer
-        zip -r "${g_savesDIR}/${selectedServer}.zip" "${g_serversDIR}/${selectedServer}"
+        # check if "${g_savesDIR}/${selectedServer}.zip" file exists
+        if [ -f "${g_savesDIR}/${selectedServer}.zip" ]; then
+            printf "${orange}A save file already exists for this server${nocolor}\n"
+
+            # ask for overwrite the file
+            read -e -p "${promptTextColor}Override existing save ? (Y/n)${promptNoColor} : " overwrite
+            if [ "$overwrite" == "y" ]; then
+                printf "${gray}Overwrite save file${nocolor}\n"
+                # create zip of folder $selectedServer
+                zip -r "${g_savesDIR}/${selectedServer}.zip" "${g_serversDIR}/${selectedServer}"
+            else
+                printf "${gray}Save file not overwritten${nocolor}\n"
+            fi
+        else
+            # create zip of folder $selectedServer
+            zip -r "${g_savesDIR}/${selectedServer}.zip" "${g_serversDIR}/${selectedServer}"
+        fi
 
     fi
 }
