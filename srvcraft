@@ -2055,6 +2055,13 @@ cmd_SaveServer () {
                 printf "${gray}Overwrite save file${nocolor}\n"
                 # create zip of folder $selectedServer
                 zip -r "${g_savesDIR}/${selectedServer}.zip" "${g_serversDIR}/${selectedServer}"
+
+                # check if file is created
+                if [ -f "${g_savesDIR}/${selectedServer}.zip" ]; then
+                    printf "${green}Save file created with success !${nocolor}\n"
+                else
+                    printf "${red}Save file not created${nocolor}\n"
+                fi
             else
                 printf "${gray}Save file not overwritten${nocolor}\n"
             fi
