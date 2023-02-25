@@ -2177,7 +2177,7 @@ cmd_loadServerSave () {
                 fi
             else
                 # unzip save file
-                unzip "${g_savesDIR}/${selectedServer}.zip" -d "${g_serversDIR}"
+                unzip "${g_savesDIR}/${selectedServer}.zip" -d "${g_serversDIR}/${selectedServer}"
 
                 # check if server is loaded
                 if [ -d "${g_serversDIR}/${selectedServer}" ]; then
