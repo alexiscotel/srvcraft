@@ -2109,7 +2109,13 @@ cmd_SaveServer () {
             if [ "$overwrite" == "y" ]; then
                 printf "${gray}Overwrite save file${nocolor}\n"
                 # create zip of folder $selectedServer
-                zip -r "${g_savesDIR}/${selectedServer}.zip" "${g_serversDIR}/${selectedServer}"
+                cd $g_serversDIR
+                printf "${gray}zipping folder ...${nocolor}\n"
+                zip -r "${selectedServer}.zip" "${selectedServer}"
+                cd ../
+                printf "${gray}moving folder ...${nocolor}\n"
+                mv "${g_serversDIR}/${selectedServer}.zip" "${g_savesDIR}/${selectedServer}.zip"
+
 
                 # check if file is created
                 if [ -f "${g_savesDIR}/${selectedServer}.zip" ]; then
@@ -2122,7 +2128,12 @@ cmd_SaveServer () {
             fi
         else
             # create zip of folder $selectedServer
-            zip -r "${g_savesDIR}/${selectedServer}.zip" "${g_serversDIR}/${selectedServer}"
+            cd $g_serversDIR
+            printf "${gray}zipping folder ...${nocolor}\n"
+            zip -r "${selectedServer}.zip" "${selectedServer}"
+            cd ../
+            printf "${gray}moving folder ...${nocolor}\n"
+            mv "${g_serversDIR}/${selectedServer}.zip" "${g_savesDIR}/${selectedServer}.zip"
 
             # check if file is created
             if [ -f "${g_savesDIR}/${selectedServer}.zip" ]; then
@@ -2155,40 +2166,46 @@ cmd_loadServerSave () {
                 # ask for overwrite the file
                 read -e -p "${promptTextColor}Override existing server ? (y/n)${promptNoColor} : " overwrite
                 if [ "$overwrite" == "y" ]; then
-                    printf "${gray}Overwrite server${nocolor}\n"
-                    # delete folder
-                    rm -rf "${g_serversDIR}/${selectedServer}"
 
-                    # unzip save file
-                    unzip "${g_savesDIR}/${selectedServer}.zip" -d "${g_serversDIR}/${selectedServer}"
+                    echo "${g_savesDIR}/${selectedServer}.zip"
+                    echo "${g_serversDIR}/${selectedServer}"
+                
+                    # printf "${gray}Overwrite server${nocolor}\n"
+                    # # delete folder
+                    # rm -rf "${g_serversDIR}/${selectedServer}"
 
-                    # check if server is loaded
-                    if [ -d "${g_serversDIR}/${selectedServer}" ]; then
-                        printf "${green}Server loaded with success !${nocolor}\n"
+                    # # unzip save file
+                    # unzip "${g_savesDIR}/${selectedServer}.zip" -d "${g_serversDIR}/${selectedServer}"
+
+                    # # check if server is loaded
+                    # if [ -d "${g_serversDIR}/${selectedServer}" ]; then
+                    #     printf "${green}Server loaded with success !${nocolor}\n"
                         
-                        ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${selectedServer}\" vient d'être chargé" default loudspeaker
-                    else
-                        printf "${red}Server not loaded${nocolor}\n"
+                    #     ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${selectedServer}\" vient d'être chargé" default loudspeaker
+                    # else
+                    #     printf "${red}Server not loaded${nocolor}\n"
 
-                        ntfy_sendNotification "Utilisation de srvcraft" "Un problème est survenu lors de la récupération de la save du serveur \"${selectedServer}\"" high triangular_flag_on_post
-                    fi
+                    #     ntfy_sendNotification "Utilisation de srvcraft" "Un problème est survenu lors de la récupération de la save du serveur \"${selectedServer}\"" high triangular_flag_on_post
+                    # fi
                 else
                     printf "${orange}Server load was canceled${nocolor}\n"
                 fi
             else
+                echo "${g_savesDIR}/${selectedServer}.zip"
+                echo "${g_serversDIR}/${selectedServer}"
                 # unzip save file
-                unzip "${g_savesDIR}/${selectedServer}.zip" -d "${g_serversDIR}/${selectedServer}"
+                unzip "${g_savesDIR}/${selectedServer}.zip" -d "${g_serversDIR}/"
 
-                # check if server is loaded
-                if [ -d "${g_serversDIR}/${selectedServer}" ]; then
-                    printf "${green}Server loaded with success !${nocolor}\n"
+                # # check if server is loaded
+                # if [ -d "${g_serversDIR}/${selectedServer}" ]; then
+                #     printf "${green}Server loaded with success !${nocolor}\n"
 
-                    ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${selectedServer}\" vient d'être chargé" default loudspeaker
-                else
-                    printf "${red}Server not loaded${nocolor}\n"
+                #     ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${selectedServer}\" vient d'être chargé" default loudspeaker
+                # else
+                #     printf "${red}Server not loaded${nocolor}\n"
 
-                    ntfy_sendNotification "Utilisation de srvcraft" "Un problème est survenu lors de la récupération de la save du serveur \"${selectedServer}\"" high triangular_flag_on_post
-                fi
+                #     ntfy_sendNotification "Utilisation de srvcraft" "Un problème est survenu lors de la récupération de la save du serveur \"${selectedServer}\"" high triangular_flag_on_post
+                # fi
             fi
         else
             printf "${red}Save file not found${nocolor}\n"
