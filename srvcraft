@@ -1437,7 +1437,8 @@ SelectServerToLoad () {
     else
         i=0
         while read line; do
-            serversList[ $i ]="$line"
+            name=$(basename "$line")
+            serversList[ $i ]="$name"
             (( i++ ))
         done < <(ls -ACDtu1 "${g_savesDIR}")
 
