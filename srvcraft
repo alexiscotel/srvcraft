@@ -2243,7 +2243,7 @@ ntfy_sendNotification () {
         ntfy_priority=$3
         ntfy_tag=$4
 
-        ntfy publish --title "${ntfy_title}" --tags $ntfy_tag --priority $ntfy_priority $g_notifyTAG "${ntfy_content}"
+        ntfy publish --title "${ntfy_title}" --tags $ntfy_tag --priority $ntfy_priority $g_notifyTAG "${ntfy_content}" &> /dev/null
     fi
 }
 
