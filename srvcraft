@@ -1251,7 +1251,7 @@ CheckCmdInstalled_explicit () {
 }
 
 InstallCmd () {
-    ntfy_sendNotification "Utilisation de srvcraft" "la commande srvcraft --install vient d'être utilisée" default loudspeaker
+    ntfy_sendNotification "Utilisation de srvcraft" "la commande \"srvcraft --install\" vient d'être utilisée" default loudspeaker
 
     CloneRepo
     ClearDir "./docs"
@@ -1904,7 +1904,7 @@ listServerScreen () {
 ##############
 
 cmd_ListAllServers () {
-    ntfy_sendNotification "Utilisation de srvcraft" "la commande srvcraft --list vient d'être utilisée" default loudspeaker
+    ntfy_sendNotification "Utilisation de srvcraft" "la commande \"srvcraft --list\" vient d'être utilisée" default loudspeaker
 
     listServerScreen
     # if [ ! -d "$g_serversDIR" ]; then
@@ -1963,7 +1963,7 @@ cmd_RemoveServer () {
     SelectServer
     if [ "$SelectServer_failed" == "false" ]; then 
         ClearDir "$g_serversDIR/$selectedServer"
-        ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} a été supprimé" high rotating_light
+        ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${selectedServer}\" a été supprimé" high rotating_light
     fi
 }
 
@@ -2006,7 +2006,7 @@ cmd_CreateServer () {
                 printf "${green}Server ${whiitebold}\"${current_serverFullName}\" ${graydim}(${current_serverName})${gray} with version ${whiitebold}\"${current_version}\"${green} create with success !${nocolor}\n"
                 printf "${gray}You can start it with : ${whiitebold}${commandName} --start ${gray}or use ${whiite} ${commandName} --config${gray} to config properties of server${nocolor}\n"
 
-                ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${current_serverFullName} vient tout juste d'être créé" default heavy_check_mark
+                ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${current_serverFullName}\" vient tout juste d'être créé" default heavy_check_mark
             fi
         fi
     fi
@@ -2023,7 +2023,7 @@ cmd_StartServer () {
         AskForMemory
         local memory=$memorySelected
         
-        ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} vient d'être lancé" default loudspeaker
+        ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${selectedServer}\" vient d'être lancé" default loudspeaker
 
         StartServer "${selectedServer}" "${memory}"
     fi
@@ -2076,7 +2076,7 @@ cmd_ConfigServer () {
                                         printf "${gray}property ${green}$selectedProperty ${gray}update with value ${whiite}${propertyValue}${nocolor}\n"
                                         printf "${graydim}Use ${gray}${commandName} --start ${graydim}to start the server${nocolor}\n"
 
-                                        ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} vient d'être configuré" default loudspeaker
+                                        ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${selectedServer}\" vient d'être configuré" default loudspeaker
                                     fi
                                 fi
                             fi
@@ -2128,7 +2128,7 @@ cmd_SaveServer () {
             if [ -f "${g_savesDIR}/${selectedServer}.zip" ]; then
                 printf "${green}Save file created with success !${nocolor}\n"
 
-                ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} vient d'être sauvegardé" default loudspeaker
+                ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${selectedServer}\" vient d'être sauvegardé" default loudspeaker
             else
                 printf "${red}Save file not created${nocolor}\n"
             fi
@@ -2166,11 +2166,11 @@ cmd_loadServerSave () {
                     if [ -d "${g_serversDIR}/${selectedServer}" ]; then
                         printf "${green}Server loaded with success !${nocolor}\n"
                         
-                        ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} vient d'être chargé" default loudspeaker
+                        ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${selectedServer}\" vient d'être chargé" default loudspeaker
                     else
                         printf "${red}Server not loaded${nocolor}\n"
 
-                        ntfy_sendNotification "Utilisation de srvcraft" "Un problème est survenu lors de la récupération de la save du serveur ${selectedServer}" high triangular_flag_on_post
+                        ntfy_sendNotification "Utilisation de srvcraft" "Un problème est survenu lors de la récupération de la save du serveur \"${selectedServer}\"" high triangular_flag_on_post
                     fi
                 else
                     printf "${orange}Server load was canceled${nocolor}\n"
@@ -2183,11 +2183,11 @@ cmd_loadServerSave () {
                 if [ -d "${g_serversDIR}/${selectedServer}" ]; then
                     printf "${green}Server loaded with success !${nocolor}\n"
 
-                    ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} vient d'être chargé" default loudspeaker
+                    ntfy_sendNotification "Utilisation de srvcraft" "le serveur \"${selectedServer}\" vient d'être chargé" default loudspeaker
                 else
                     printf "${red}Server not loaded${nocolor}\n"
 
-                    ntfy_sendNotification "Utilisation de srvcraft" "Un problème est survenu lors de la récupération de la save du serveur ${selectedServer}" high triangular_flag_on_post
+                    ntfy_sendNotification "Utilisation de srvcraft" "Un problème est survenu lors de la récupération de la save du serveur \"${selectedServer}\"" high triangular_flag_on_post
                 fi
             fi
         else
