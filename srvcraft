@@ -1026,6 +1026,7 @@ ClearDetachedScreens () {
         cmdScreenName=${in:6}
         printf "${graydim}Delete screen ${gray}\"$cmdScreenName\" ${graydim}...${nocolor}\n"
     done
+    ntfy_sendNotification "Utilisation de srvcraft" "tous les screens ont été purgés" urgent rotating_light
 }
 
 # @Function : Attach the current terminal to passed in param screen session
@@ -1250,6 +1251,8 @@ CheckCmdInstalled_explicit () {
 }
 
 InstallCmd () {
+    ntfy_sendNotification "Utilisation de srvcraft" "la commande srvcraft --install vient d'être utilisée" default loudspeaker
+
     CloneRepo
     ClearDir "./docs"
     ClearDir "./loader"
@@ -1863,6 +1866,7 @@ listServerScreen () {
 ##############
 
 cmd_ListAllServers () {
+    ntfy_sendNotification "Utilisation de srvcraft" "la commande srvcraft --list vient d'être utilisée" default loudspeaker
 
     listServerScreen
     # if [ ! -d "$g_serversDIR" ]; then
@@ -1904,6 +1908,7 @@ cmd_ClearAllServers () {
                 read -e -p $'\033[0;38;5;178m  Are you sure ?\033[0m O/n : ' -i "n" clearValidation
                 if [ "${clearValidation}" == "O" -o "${clearValidation}" == "o" ]; then
                     ClearDir "${g_serversDIR}"
+                    ntfy_sendNotification "Utilisation de srvcraft" "tous les serveurs ont été supprimés" urgent rotating_light
                 else
                     printf "${graydim}nothing done.${nocolor}\n"
                 fi
@@ -1920,6 +1925,7 @@ cmd_RemoveServer () {
     SelectServer
     if [ "$SelectServer_failed" == "false" ]; then 
         ClearDir "$g_serversDIR/$selectedServer"
+        ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} a été supprimé" high rotating_light
     fi
 }
 
@@ -1961,6 +1967,8 @@ cmd_CreateServer () {
             else 
                 printf "${green}Server ${whiitebold}\"${current_serverFullName}\" ${graydim}(${current_serverName})${gray} with version ${whiitebold}\"${current_version}\"${green} create with success !${nocolor}\n"
                 printf "${gray}You can start it with : ${whiitebold}${commandName} --start ${gray}or use ${whiite} ${commandName} --config${gray} to config properties of server${nocolor}\n"
+
+                ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${current_serverFullName} vient tout juste d'être créé" default heavy_check_mark
             fi
         fi
     fi
@@ -1976,6 +1984,8 @@ cmd_StartServer () {
 
         AskForMemory
         local memory=$memorySelected
+        
+        ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} vient d'être lancé" default loudspeaker
 
         StartServer "${selectedServer}" "${memory}"
     fi
@@ -2027,6 +2037,8 @@ cmd_ConfigServer () {
                                     else 
                                         printf "${gray}property ${green}$selectedProperty ${gray}update with value ${whiite}${propertyValue}${nocolor}\n"
                                         printf "${graydim}Use ${gray}${commandName} --start ${graydim}to start the server${nocolor}\n"
+
+                                        ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} vient d'être configuré" default loudspeaker
                                     fi
                                 fi
                             fi
@@ -2041,6 +2053,7 @@ cmd_ConfigServer () {
     fi
 }
 
+## save ##
 cmd_SaveServer () {
     printf "${green}Choose a server to save :${nocolor}\n"
     SelectServer 
@@ -2076,9 +2089,71 @@ cmd_SaveServer () {
             # check if file is created
             if [ -f "${g_savesDIR}/${selectedServer}.zip" ]; then
                 printf "${green}Save file created with success !${nocolor}\n"
+
+                ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} vient d'être sauvegardé" default loudspeaker
             else
                 printf "${red}Save file not created${nocolor}\n"
             fi
+        fi
+
+    fi
+}
+cmd_loadServerSave () {
+    printf "${green}Choose a server to load :${nocolor}\n"
+    SelectServer 
+    if [ "$SelectServer_failed" == "true" ]; then
+        echo "server not found"
+    else
+        echo "server selected : $selectedServer"
+
+        # check if "${g_savesDIR}/${selectedServer}.zip" file exists
+        if [ -f "${g_savesDIR}/${selectedServer}.zip" ]; then
+            printf "${gray}Save file found${nocolor}\n"
+
+            # check if server exists in folder ./instances
+            if [ -d "${g_serversDIR}/${selectedServer}" ]; then
+                printf "${yellow}A server already exists for this save${nocolor}\n"
+
+                # ask for overwrite the file
+                read -e -p "${promptTextColor}Override existing server ? (y/n)${promptNoColor} : " overwrite
+                if [ "$overwrite" == "y" ]; then
+                    printf "${gray}Overwrite server${nocolor}\n"
+                    # delete folder
+                    rm -rf "${g_serversDIR}/${selectedServer}"
+
+                    # unzip save file
+                    unzip "${g_savesDIR}/${selectedServer}.zip" -d "${g_serversDIR}"
+
+                    # check if server is loaded
+                    if [ -d "${g_serversDIR}/${selectedServer}" ]; then
+                        printf "${green}Server loaded with success !${nocolor}\n"
+                        
+                        ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} vient d'être chargé" default loudspeaker
+                    else
+                        printf "${red}Server not loaded${nocolor}\n"
+
+                        ntfy_sendNotification "Utilisation de srvcraft" "Un problème est survenu lors de la récupération de la save du serveur ${selectedServer}" high triangular_flag_on_post
+                    fi
+                else
+                    printf "${orange}Server load was canceled${nocolor}\n"
+                fi
+            else
+                # unzip save file
+                unzip "${g_savesDIR}/${selectedServer}.zip" -d "${g_serversDIR}"
+
+                # check if server is loaded
+                if [ -d "${g_serversDIR}/${selectedServer}" ]; then
+                    printf "${green}Server loaded with success !${nocolor}\n"
+
+                    ntfy_sendNotification "Utilisation de srvcraft" "le serveur ${selectedServer} vient d'être chargé" default loudspeaker
+                else
+                    printf "${red}Server not loaded${nocolor}\n"
+
+                    ntfy_sendNotification "Utilisation de srvcraft" "Un problème est survenu lors de la récupération de la save du serveur ${selectedServer}" high triangular_flag_on_post
+                fi
+            fi
+        else
+            printf "${red}Save file not found${nocolor}\n"
         fi
 
     fi
@@ -2188,9 +2263,10 @@ ${commandName} [ -i | --install : download and install command ]
        [ --setGlobal    : set command usable globally ]
        [ --create       : create a server ]
        [ --config       : config a server ]
-       [ -l | --list    : list all servers ]
+       [ --list         : list all servers ]
        [ --start        : start a server ]
        [ --save         : save a server ]
+       [ --load         : load a save from a server ]
        [ --connect      : connect to a server ]
        [ --remove       : choose a server to remove ]
        [ --clear        : clear all the instances (ls ${g_serversDIR}) ]
@@ -2207,9 +2283,7 @@ if [ "$g_isJavaInstalled" == "false" ]; then
     exit 0;
 fi
 
-ntfy_sendNotification "Utilisation de srvcraft" "la commande srvcraft est utilisée" default loudspeaker
-
-options=$(getopt -a -n ${commandName} -o ilh --long install,checkInstall,setGlobal,create,config,list,start,save,connect,remove,clear,help -- "$@")
+options=$(getopt -a -n ${commandName} -o ih --long install,checkInstall,setGlobal,create,config,list,start,save,load,connect,remove,clear,help -- "$@")
 [ $? -eq 0 ] || { 
     printf "${red}Incorrect options provided${nocolor}\n"
     exit 1
@@ -2251,7 +2325,7 @@ while true; do
         fi
         break
         ;;
-    -l | --list)
+    --list)
         cmd_ListAllServers
         break
         ;;
@@ -2269,12 +2343,17 @@ while true; do
         cmd_SaveServer
         break
         ;;
+    --load)
+        cmd_loadServerSave
+        break
+        ;;
     --connect)
         SelectScreenSession
         if [ "$SelectForVersion_failed" == "true" ]; then
             printf "${whiite}\"srvcraft --list\"${gray} to list current screen sessions${nocolor}\n"
             printf "${whiite}\"srvcraft --start\"${gray} to start one${nocolor}\n"
         else 
+            ntfy_sendNotification "Utilisation de srvcraft" "le screen ${screenUsed} a été attaché" default loudspeaker
             AttachToScreen "$screenUsed"
         fi
         break
