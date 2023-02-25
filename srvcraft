@@ -1423,6 +1423,43 @@ SelectServer () {
     fi
 }
 
+SelectServerToLoad () {
+    SelectServerToLoad_failed="false"
+    selectedServer=""
+
+    # test if servers dir exists
+    if [ ! -d "$g_savesDIR" ]; then
+        SelectServerToLoad_failed="true"
+
+        if [ "$g_isVerboseActive" == "true" ]; then
+            printf "${red}servers directory \"${g_savesDIR}\" does not exits${nocolor}\n"
+        fi
+    else
+        i=0
+        while read line; do
+            serversList[ $i ]="$line"
+            (( i++ ))
+        done < <(ls -ACDtu1 "${g_savesDIR}")
+
+        printf "${gray}"
+        PS3='Select server : '
+        select opt in "${serversList[@]}"; do
+            case "$opt" in
+                "") continue ;;
+                *)
+                    printf "${nocolor}"
+                    selectedServer=$opt
+                    break
+                    ;;
+            esac
+        done
+
+        if [ "$g_isDoubleVerboseActive" == "true" ]; then
+            printf "${gray}Server selected :${green} ${selectedServer} ${nocolor}\n"
+        fi
+    fi
+}
+
 # @Function : Ask for version to use
 # @Result : var versionUsed available
 # @UseCase : SelectForVersion
@@ -2100,15 +2137,15 @@ cmd_SaveServer () {
 }
 cmd_loadServerSave () {
     printf "${green}Choose a server to load :${nocolor}\n"
-    SelectServer 
-    if [ "$SelectServer_failed" == "true" ]; then
+    SelectServerToLoad
+    if [ "$SelectServerToLoad_failed" == "true" ]; then
         echo "server not found"
     else
         echo "server selected : $selectedServer"
 
         # check if "${g_savesDIR}/${selectedServer}.zip" file exists
         if [ -f "${g_savesDIR}/${selectedServer}.zip" ]; then
-            printf "${gray}Save file found${nocolor}\n"
+            # printf "${gray}Save file found${nocolor}\n"
 
             # check if server exists in folder ./instances
             if [ -d "${g_serversDIR}/${selectedServer}" ]; then
@@ -2122,7 +2159,7 @@ cmd_loadServerSave () {
                     rm -rf "${g_serversDIR}/${selectedServer}"
 
                     # unzip save file
-                    unzip "${g_savesDIR}/${selectedServer}.zip" -d "${g_serversDIR}"
+                    unzip "${g_savesDIR}/${selectedServer}.zip" -d "${g_serversDIR}/${selectedServer}"
 
                     # check if server is loaded
                     if [ -d "${g_serversDIR}/${selectedServer}" ]; then
